@@ -1,0 +1,55 @@
+// App-level build.gradle
+// This file configures the Android application module.
+
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "com.example.pomfretcardapp"
+    compileSdkVersion 34 // Using a direct value for compile SDK version
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    defaultConfig {
+        applicationId "com.example.pomfretcardapp"
+        minSdkVersion 21 // Using a direct value
+        targetSdkVersion 34 // Using a direct value
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            keyAlias 'mykey' // Replace with the alias you used when creating the keystore
+            keyPassword 'Ilya20062006!' // Replace with the password you used
+            storeFile file('C:/Users/Denis/.keystore') // The path to your keystore
+            storePassword 'Ilya20062006!' // Replace with the keystore password you used
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            shrinkResources false
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+dependencies {
+    implementation "androidx.annotation:annotation:1.9.0"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.annotation:annotation:1.9.0"
+}
+

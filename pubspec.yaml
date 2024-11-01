@@ -1,0 +1,62 @@
+name: pomfretcardapp
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.3
+
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.0.0
+  http: 1.2.2
+  shared_preferences: ^2.0.0
+  flutter_secure_storage: ^9.2.2
+  flutter_pin_code_fields: ^2.2.0
+  flutter_svg: ^2.0.10+1
+  cupertino_icons: ^1.0.8
+  google_fonts: ^4.0.3
+  animations: ^2.0.11
+  crypto: ^3.0.1
+  bcrypt: ^1.1.3
+  barcode_widget: ^2.0.0
+  pointycastle: ^3.9.1
+  asn1lib: ^1.5.5
+  basic_utils: ^5.7.0
+  rsa_pkcs: ^2.1.0
+  base64: ^1.0.0
+  cryptography: ^2.7.0
+  crypto_keys: ^0.3.0+1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+  fonts:
+    - family: Aeonik
+      fonts:
+        - asset: assets/fonts/Aeonik-Air.otf
+        - asset: assets/fonts/Aeonik-AirItalic.otf
+        - asset: assets/fonts/Aeonik-Black.otf
+        - asset: assets/fonts/Aeonik-BlackItalic.otf
+        - asset: assets/fonts/Aeonik-Bold.otf
+        - asset: assets/fonts/Aeonik-BoldItalic.otf
+        - asset: assets/fonts/Aeonik-Light.otf
+        - asset: assets/fonts/Aeonik-LightItalic.otf
+        - asset: assets/fonts/Aeonik-Medium.otf
+        - asset: assets/fonts/Aeonik-MediumItalic.otf
+        - asset: assets/fonts/Aeonik-Regular.otf
+        - asset: assets/fonts/Aeonik-RegularItalic.otf
+        - asset: assets/fonts/Aeonik-Thin.otf
+        - asset: assets/fonts/Aeonik-ThinItalic.otf
+          weight: 700
+
