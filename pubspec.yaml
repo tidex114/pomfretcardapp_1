@@ -40,7 +40,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
+    - assets/
+    - assets/images/pomfret_label.jpg
+    - assets/images/profile_picture.png
+    - assets/images/card_background.png
+    - assets/images/pomcard_icon.svg
   fonts:
     - family: Aeonik
       fonts:

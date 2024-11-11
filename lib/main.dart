@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'pages/verify_pin.dart';
 import 'pages/login.dart';
-import 'pages/main_page.dart';
+import 'pages/main_page/main_page.dart';
 import 'pages/register.dart';
 import 'pages/password_reset.dart'; // Adjust the path if necessary
-
 import 'pages/pin_entry.dart';
 
 void main() {

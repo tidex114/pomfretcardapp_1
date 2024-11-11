@@ -47,6 +47,7 @@ Future<Map<String, dynamic>> decryptJsonData(String encryptedJsonBase64) async {
       final jsonString = utf8.decode(decryptedData);
 
       // Parse JSON string to a Map
+      print("DCRPT SERVICE: decrypted json is $jsonString" );
       return json.decode(jsonString);
     } else {
       throw Exception('Private key not found in secure storage');
