@@ -1,6 +1,5 @@
-// main_page.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'card_page.dart';
 import 'transactions_page.dart';
 import 'profile_page.dart';
@@ -60,26 +59,87 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        children: <Widget>[
-          CardPage(
-            firstName: _firstName,
-            lastName: _lastName,
+      body: Column(
+        children: [
+          PreferredSize(
+            preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.15),
+            child: Container(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height * 0.14,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 30,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(left: 16.0, bottom: 12.0),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/images/pomcard_icon.svg',
+                        height: 60,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'card',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 50,
+                          fontStyle: FontStyle.italic,
+                          fontFamily: 'Aeonik',
+                          fontWeight: FontWeight.w700,
+                          height: 0,
+                          letterSpacing: 1.38,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-          TransactionPage(),
-          ProfilePage(
-            firstName: _firstName,
-            lastName: _lastName,
-            graduationYear: _graduationYear,
-            email: _email,
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: _onPageChanged,
+              children: <Widget>[
+                CardPage(
+                  firstName: _firstName,
+                  lastName: _lastName,
+                ),
+                TransactionPage(),
+                ProfilePage(
+                  firstName: _firstName,
+                  lastName: _lastName,
+                  graduationYear: _graduationYear,
+                  email: _email,
+                ),
+              ],
+            ),
           ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        elevation: 10.0,
+        iconSize: 22.0,
+        selectedFontSize: 17.0,
+        unselectedFontSize: 14.0,
+        selectedItemColor: Colors.red,
+        unselectedItemColor: Colors.grey,
         currentIndex: _currentIndex,
         onTap: _onBottomNavTapped,
+        selectedLabelStyle: TextStyle(fontFamily: 'Aeonik', fontWeight: FontWeight.bold),
+        unselectedLabelStyle: TextStyle(fontFamily: 'Aeonik'),
+        backgroundColor: Colors.white, // Change the background color to white
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: 'Card'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Transactions'),

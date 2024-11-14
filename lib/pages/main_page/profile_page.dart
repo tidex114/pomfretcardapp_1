@@ -45,30 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
       padding: EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                'assets/images/pomcard_icon.svg',
-                height: 60,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'card',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 50,
-                  fontStyle: FontStyle.italic,
-                  fontFamily: 'Aeonik',
-                  fontWeight: FontWeight.w700,
-                  height: 0,
-                  letterSpacing: 1.38,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
+
           _buildTopProfileSection(context),
           SizedBox(height: 20),
           _buildCardBalanceSection(),

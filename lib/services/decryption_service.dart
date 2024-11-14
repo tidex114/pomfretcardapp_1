@@ -33,7 +33,7 @@ Uint8List _decryptWithPrivateKey(RSAPrivateKey privateKey, Uint8List cipherText)
 
 Uint8List _decryptWithAES(Uint8List key, Uint8List iv, Uint8List cipherText) {
   // Initialize AES engine and CBC mode with the key and IV
-  final aesEngine = AESFastEngine();
+  final aesEngine = AESEngine();
   final cbcBlockCipher = CBCBlockCipher(aesEngine)
     ..init(false, api.ParametersWithIV(api.KeyParameter(key), iv));
 
