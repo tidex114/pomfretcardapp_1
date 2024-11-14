@@ -31,6 +31,7 @@ dependencies:
   base64: ^1.0.0
   cryptography: ^2.7.0
   crypto_keys: ^0.3.0+1
+  path_provider: ^2.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

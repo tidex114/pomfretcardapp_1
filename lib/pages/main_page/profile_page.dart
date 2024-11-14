@@ -3,15 +3,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pomfretcardapp/pages/login.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   final String? firstName;
   final String? lastName;
   final String? graduationYear;
   final String? email;
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   ProfilePage({this.firstName, this.lastName, this.graduationYear, this.email});
+
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  Uint8List? _profileImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final base64Png = await _secureStorage.read(key: 'profile_image');
+    Uint8List? profileImage;
+    if (base64Png != null) {
+      profileImage = base64Decode(base64Png);
+    }
+    setState(() {
+      _profileImage = profileImage;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,11 +98,14 @@ class ProfilePage extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: Colors.redAccent,
-            child: Icon(
+            backgroundImage: _profileImage != null ? MemoryImage(_profileImage!) : null,
+            child: _profileImage == null
+                ? Icon(
               Icons.person,
               size: 40,
               color: Colors.white,
-            ),
+            )
+                : null,
           ),
           SizedBox(width: 20),
           Expanded(
@@ -84,19 +113,18 @@ class ProfilePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "${firstName ?? "First Name"} ${lastName ??
-                      "Last Name"} ${graduationYear ?? "YY"}'",
-                  style: TextStyle(fontSize: 20,
+                  "${widget.firstName ?? "First Name"} ${widget.lastName ?? "Last Name"} ${widget.graduationYear ?? "YY"}'",
+                  style: TextStyle(
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Aeonik',
                       color: Colors.black),
                 ),
                 SizedBox(height: 5),
                 Text(
-                  email ?? 'No email available',
-                  style: TextStyle(fontSize: 16,
-                      fontFamily: 'Aeonik',
-                      color: Colors.black54),
+                  widget.email ?? 'No email available',
+                  style: TextStyle(
+                      fontSize: 16, fontFamily: 'Aeonik', color: Colors.black54),
                 ),
               ],
             ),
@@ -139,7 +167,8 @@ class ProfilePage extends StatelessWidget {
           children: [
             Text(
               'Balance',
-              style: TextStyle(fontSize: 22,
+              style: TextStyle(
+                  fontSize: 22,
                   fontWeight: FontWeight.w400,
                   color: Colors.black,
                   fontFamily: 'Aeonik'),
@@ -156,7 +185,8 @@ class ProfilePage extends StatelessWidget {
                 children: [
                   Text(
                     '\$ • • •',
-                    style: TextStyle(fontSize: 24,
+                    style: TextStyle(
+                        fontSize: 24,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey,
                         fontFamily: 'Aeonik'),
@@ -203,7 +233,8 @@ class ProfilePage extends StatelessWidget {
             leading: Icon(Icons.settings, color: Colors.redAccent),
             title: Text(
               'Settings',
-              style: TextStyle(fontSize: 18,
+              style: TextStyle(
+                  fontSize: 18,
                   fontWeight: FontWeight.w500,
                   color: Colors.black,
                   fontFamily: 'Aeonik'),

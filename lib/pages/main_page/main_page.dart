@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'card_page.dart';
 import 'transactions_page.dart';
 import 'profile_page.dart';
-import 'main_page_functions.dart';
+import '../../services/shared_functions.dart';
 
 class MainPage extends StatefulWidget {
   @override
@@ -13,7 +13,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
-  final MainPageFunctions _functions = MainPageFunctions();
+  final SharedFunctions _sharedFunctions = SharedFunctions();
   late AnimationController _animationController;
   late Animation<double> _animation;
   int _currentIndex = 0;
@@ -25,9 +25,9 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _animationController = _functions.createAnimationController(this);
-    _animation = _functions.createAnimation(_animationController);
-    _functions.loadUserInfo(_updateUserInfo);
+    _animationController = _sharedFunctions.createAnimationController(this);
+    _animation = _sharedFunctions.createAnimation(_animationController);
+    _sharedFunctions.loadUserInfo(_updateUserInfo);
   }
 
   void _updateUserInfo(String? firstName, String? lastName, String? graduationYear, String? email) {
@@ -41,20 +41,20 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
-    _functions.disposeControllers(_pageController, _animationController);
+    _sharedFunctions.disposeControllers(_pageController, _animationController);
     super.dispose();
   }
 
   void _onPageChanged(int index) {
-    _functions.onPageChanged(index, (newIndex) => setState(() => _currentIndex = newIndex), _animationController);
+    _sharedFunctions.onPageChanged(index, (newIndex) => setState(() => _currentIndex = newIndex), _animationController);
   }
 
   void _onBottomNavTapped(int index) {
-    _functions.onBottomNavTapped(_pageController, index);
+    _sharedFunctions.onBottomNavTapped(_pageController, index);
   }
 
   Future<void> _reloadPage() async {
-    await _functions.loadUserInfo(_updateUserInfo);
+    await _sharedFunctions.loadUserInfo(_updateUserInfo);
   }
 
   @override

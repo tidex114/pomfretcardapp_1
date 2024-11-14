@@ -1,14 +1,13 @@
 // card_page.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'dart:ui';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:pomfretcardapp/pages/config.dart';
-import 'package:pomfretcardapp/services/decrypt_with_private_key.dart';
+import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../services/shared_functions.dart';
+import 'package:path_provider/path_provider.dart';
 
 final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
@@ -24,64 +23,54 @@ class CardPage extends StatefulWidget {
 
 class _CardPageState extends State<CardPage> {
   String? _barcodeData;
+  Uint8List? _profileImage;
+  final SharedFunctions _sharedFunctions = SharedFunctions();
   final double cardAspectRatio = 86 / 54;
 
   @override
   void initState() {
     super.initState();
-    loadBarcodeData(_updateBarcodeData);
+    _loadStoredData();
   }
 
-  Future<void> loadBarcodeData(Function updateBarcodeData) async {
-    try {
-      final userEmail = await _secureStorage.read(key: 'user_email');
-      if (userEmail != null) {
-        final response = await http.post(
-          Uri.parse('${Config.schoolBackendUrl}/get_barcode'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({'email': userEmail, 'public_key': await _secureStorage.read(key: 'public_key')}),
-        );
-        if (response.statusCode == 200) {
-          final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
-          final decryptedJsonMap = await decryptJsonData(encryptedJsonBase64);
+  Future<void> _loadStoredData() async {
+    final barcodeData = await _secureStorage.read(key: 'barcode_data');
+    final base64Png = await _secureStorage.read(key: 'profile_image');
 
-          if (decryptedJsonMap['email'] == userEmail) {
-            if (decryptedJsonMap.containsKey('barcode') && decryptedJsonMap['barcode'] is int) {
-              final String barcodeData = decryptedJsonMap['barcode'].toString();
-              updateBarcodeData(barcodeData);
-            } else {
-              print('Error: Barcode data is missing or not an integer');
-              updateBarcodeData("Unknown");
-            }
-          } else {
-            print('Error: Email mismatch');
-            updateBarcodeData("Email mismatch");
-          }
-        } else {
-          print('Error: Failed to fetch barcode with status code ${response.statusCode}');
-          updateBarcodeData("Unknown");
-        }
-      } else {
-        print('Error: User email not found in secure storage');
-        updateBarcodeData("Unknown");
-      }
-    } catch (e) {
-      print('Error during barcode retrieval: $e');
-      updateBarcodeData("Unknown");
+    Uint8List? profileImage;
+    if (base64Png != null) {
+      profileImage = base64Decode(base64Png);
     }
-  }
 
-  void _updateBarcodeData(String barcodeData) {
     setState(() {
       _barcodeData = barcodeData;
+      _profileImage = profileImage;
     });
   }
 
   Future<void> _reloadPage() async {
     setState(() {
       _barcodeData = null; // Clear the barcode data before reloading
+      _profileImage = null; // Clear the profile image data before reloading
     });
-    await loadBarcodeData(_updateBarcodeData);
+    await _sharedFunctions.loadBarcodeData(_updateBarcodeData);
+    await _sharedFunctions.loadProfileImageData(_updateProfileImageData);
+  }
+
+  void _updateBarcodeData(String barcodeData) {
+    setState(() {
+      _barcodeData = barcodeData;
+      _secureStorage.write(key: 'barcode_data', value: barcodeData);
+    });
+  }
+
+  void _updateProfileImageData(Uint8List? imageData) {
+    setState(() {
+      _profileImage = imageData;
+      if (imageData != null) {
+        _secureStorage.write(key: 'profile_image_data', value: base64Encode(imageData));
+      }
+    });
   }
 
   @override
@@ -181,12 +170,23 @@ class _CardPageState extends State<CardPage> {
                       Positioned(
                         top: adjustedCardHeight * (20 / 86),
                         left: adjustedCardWidth * 0.5 - adjustedCardHeight * (25 / 86) / 2,
-                        child: Image.asset(
-                          'assets/images/profile_picture.png',
-                          height: adjustedCardHeight * (25 / 86),
-                          width: adjustedCardHeight * (25 / 86),
+                        child: ClipOval(
+                          child: _profileImage != null
+                              ? Image.memory(
+                            _profileImage!,
+                            height: adjustedCardHeight * (25 / 86),
+                            width: adjustedCardHeight * (25 / 86),
+                            fit: BoxFit.cover,
+                          )
+                              : Image.asset(
+                            'assets/images/profile_picture.png',
+                            height: adjustedCardHeight * (25 / 86),
+                            width: adjustedCardHeight * (25 / 86),
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
+
                       Positioned(
                         top: adjustedCardHeight * (49 / 86),
                         left: 0,

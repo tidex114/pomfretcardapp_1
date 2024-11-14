@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:pomfretcardapp/pages/login.dart';
 import 'package:pomfretcardapp/pages/config.dart';
-import 'package:pomfretcardapp/services/decrypt_with_private_key.dart';
+import 'package:pomfretcardapp/services/decryption_service.dart';
 import 'dart:ui';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
