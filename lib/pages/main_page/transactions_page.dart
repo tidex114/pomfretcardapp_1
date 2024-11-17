@@ -13,7 +13,7 @@ class TransactionPage extends StatefulWidget {
   _TransactionPageState createState() => _TransactionPageState();
 }
 
-class _TransactionPageState extends State<TransactionPage> {
+class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAliveClientMixin<TransactionPage> {
   List<bool> _tileExpandedStates = [];
   List<Map<String, dynamic>> transactions = [];
   String currentTimestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
@@ -22,6 +22,10 @@ class _TransactionPageState extends State<TransactionPage> {
   bool hasMore = true;
   final storage = FlutterSecureStorage();
   String? studentId;
+  bool _loadError = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -73,13 +77,12 @@ class _TransactionPageState extends State<TransactionPage> {
         }),
       );
 
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<Map<String, dynamic>> newTransactions = List<Map<String, dynamic>>.from(responseData['transactions']);
         hasMore = responseData['has_more'];
         latestTimestamp = DateTime.parse(responseData['latest_timestamp']);
-        print("hasmore $hasMore");
+        print("hasmore \$hasMore");
         setState(() {
           if (loadMore) {
             transactions.addAll(newTransactions);
@@ -88,12 +91,17 @@ class _TransactionPageState extends State<TransactionPage> {
             transactions = newTransactions;
             _tileExpandedStates = List<bool>.filled(newTransactions.length, false);
           }
+          _loadError = false;
         });
       } else {
-        print('Failed to load transactions: ${response.body}');
+        setState(() {
+          _loadError = true;
+        });
       }
     } catch (e) {
-      print('Error loading transactions: $e');
+      setState(() {
+        _loadError = true;
+      });
     } finally {
       if (loadMore) {
         setState(() {
@@ -110,6 +118,7 @@ class _TransactionPageState extends State<TransactionPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return RefreshIndicator(
       onRefresh: _reloadPage,
       child: NotificationListener<ScrollNotification>(
@@ -121,113 +130,157 @@ class _TransactionPageState extends State<TransactionPage> {
         },
         child: ListView(
           children: [
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Recent transactions:',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: 'Aeonik',
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 8.0),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              itemCount: transactions.length,
-              itemBuilder: (context, index) {
-                final transaction = transactions[index];
-                return Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8.0),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4.0,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  margin: EdgeInsets.symmetric(vertical: 4.0),
-                  child: ExpansionTile(
-                    key: PageStorageKey<int>(index),
-                    onExpansionChanged: (bool expanded) {
-                      if (expanded) {
-                        setState(() {
-                          for (int i = 0; i < _tileExpandedStates.length; i++) {
-                            _tileExpandedStates[i] = i == index;
-                          }
-                        });
-                      }
-                    },
-                    initiallyExpanded: _tileExpandedStates.length > index ? _tileExpandedStates[index] : false,
-                    title: Text(
-                      transaction['transaction_place'] ?? 'Unknown',
+            if (_loadError)
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.warning,
+                      color: Colors.black54,
+                    ),
+                    SizedBox(width: 8.0),
+                    Text(
+                      "Couldn't load transactions",
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Aeonik',
-                        color: Colors.black,
-                      ),
-                    ),
-                    subtitle: Text(
-                      transaction['transaction_date'] != null ? DateFormat('E, d MMM HH:mm').format(DateTime.parse(transaction['transaction_date']).toLocal()) : 'Unknown',
-                      style: TextStyle(
-                        fontSize: 17,
                         fontFamily: 'Aeonik',
                         color: Colors.black54,
                       ),
                     ),
-                    trailing: Text(
-                      '\$${transaction['transaction_sum'] ?? 0.0}',
+                  ],
+                ),
+              )
+            else if (transactions.isEmpty && !_isLoadingMore)
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.black54,
+                    ),
+                    SizedBox(width: 8.0),
+                    Text(
+                      'No transactions to show',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 18,
+                        fontFamily: 'Aeonik',
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Recent transactions:',
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.w800,
                         fontFamily: 'Aeonik',
                         color: Colors.black,
                       ),
                     ),
-                    children: <Widget>[
-                      ListTile(
-                        title: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: _parseItems(transaction['items'] ?? ''),
-                        ),
-                      ),
-                    ],
                   ),
-                );
-              },
-            ),
-            if (_isLoadingMore)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Center(
-                  child: CircularProgressIndicator(),
                 ),
-              ),
-            if (!hasMore)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Center(
-                  child: Text(
-                    'You have reached the end',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontFamily: 'Aeonik',
-                      color: Colors.black54,
+                SizedBox(height: 8.0),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: transactions.length,
+                  itemBuilder: (context, index) {
+                    final transaction = transactions[index];
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.0),
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4.0,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      margin: EdgeInsets.symmetric(vertical: 4.0),
+                      child: ExpansionTile(
+                        key: PageStorageKey<int>(index),
+                        onExpansionChanged: (bool expanded) {
+                          if (expanded) {
+                            setState(() {
+                              for (int i = 0; i < _tileExpandedStates.length; i++) {
+                                _tileExpandedStates[i] = i == index;
+                              }
+                            });
+                          }
+                        },
+                        initiallyExpanded: _tileExpandedStates.length > index ? _tileExpandedStates[index] : false,
+                        title: Text(
+                          transaction['transaction_place'] ?? 'Unknown',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'Aeonik',
+                            color: Colors.black,
+                          ),
+                        ),
+                        subtitle: Text(
+                          transaction['transaction_date'] != null ? DateFormat('E, d MMM HH:mm').format(DateTime.parse(transaction['transaction_date']).toLocal()) : 'Unknown',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontFamily: 'Aeonik',
+                            color: Colors.black54,
+                          ),
+                        ),
+                        trailing: Text(
+                          '\$${transaction['transaction_sum'] ?? 0.0}',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontFamily: 'Aeonik',
+                            color: Colors.black,
+                          ),
+                        ),
+                        children: <Widget>[
+                          ListTile(
+                            title: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: _parseItems(transaction['items'] ?? ''),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                if (_isLoadingMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: CircularProgressIndicator(),
                     ),
                   ),
-                ),
-              ),
+                if (!hasMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: Text(
+                        'You have reached the end',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'Aeonik',
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
           ],
         ),
       ),

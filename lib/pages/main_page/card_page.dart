@@ -21,7 +21,7 @@ class CardPage extends StatefulWidget {
   _CardPageState createState() => _CardPageState();
 }
 
-class _CardPageState extends State<CardPage> {
+class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<CardPage> {
   String? _barcodeData;
   Uint8List? _profileImage;
   bool _isLoadingBarcode = true;
@@ -43,6 +43,7 @@ class _CardPageState extends State<CardPage> {
     super.initState();
     _loadStoredData();
     _loadGreeting();
+    _loadProfileAndBarcode();
   }
 
   Future<void> _loadStoredData() async {
@@ -62,6 +63,11 @@ class _CardPageState extends State<CardPage> {
     });
   }
 
+  Future<void> _loadProfileAndBarcode() async {
+    await _sharedFunctions.loadBarcodeData(_updateBarcodeData);
+    await _sharedFunctions.loadProfileImageData(_updateProfileImageData);
+  }
+
   Future<void> _reloadPage() async {
     setState(() {
       _barcodeData = null; // Clear the barcode data before reloading
@@ -69,8 +75,7 @@ class _CardPageState extends State<CardPage> {
       _isLoadingBarcode = true;
       _isLoadingProfileImage = true;
     });
-    await _sharedFunctions.loadBarcodeData(_updateBarcodeData);
-    await _sharedFunctions.loadProfileImageData(_updateProfileImageData);
+    await _loadProfileAndBarcode();
   }
 
   void _updateBarcodeData(String barcodeData) {
@@ -106,7 +111,11 @@ class _CardPageState extends State<CardPage> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final double screenPadding = MediaQuery.of(context).size.width *
         0.15; // or another suitable fraction
     final double availableWidth =
@@ -373,5 +382,4 @@ class _CardPageState extends State<CardPage> {
       ),
     );
   }
-
 }
