@@ -99,6 +99,47 @@ class SharedFunctions {
       updateBarcodeData("Unknown");
     }
   }
+  Future<void> loadBalanceData(Function updateBalanceData) async {
+    try {
+      final userEmail = await _secureStorage.read(key: 'user_email');
+      if (userEmail != null) {
+        final response = await http.post(
+          Uri.parse('${Config.schoolBackendUrl}/get_balance'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'email': userEmail,
+            'public_key': await _secureStorage.read(key: 'public_key')
+          }),
+        );
+        if (response.statusCode == 200) {
+          final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
+          final decryptedJsonMap = await decryptJsonData(encryptedJsonBase64);
+
+          if (decryptedJsonMap['email'] == userEmail) {
+            if (decryptedJsonMap.containsKey('remaining_balance')) {
+              final String balanceData = '\$${decryptedJsonMap['remaining_balance'].toString()}';
+              updateBalanceData(balanceData);
+            } else {
+              print('Error: Balance data is missing');
+              updateBalanceData('\$ • • •');
+            }
+          } else {
+            print('Error: Email mismatch');
+            updateBalanceData('Email mismatch');
+          }
+        } else {
+          print('Error: Failed to fetch balance with status code \${response.statusCode}');
+          updateBalanceData('\$ • • •');
+        }
+      } else {
+        print('Error: User email not found in secure storage');
+        updateBalanceData('\$ • • •');
+      }
+    } catch (e) {
+      print('Error during balance retrieval: $e');
+      updateBalanceData('\$ • • •');
+    }
+  }
 
   Future<void> _savePngToFlutterStorage(Uint8List pngData) async {
     try {

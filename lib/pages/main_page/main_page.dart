@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'card_page.dart';
 import 'transactions_page.dart';
-import 'profile_page.dart';
+import 'profile_page/profile_page.dart';
 import '../../services/shared_functions.dart';
 
 class MainPage extends StatefulWidget {
