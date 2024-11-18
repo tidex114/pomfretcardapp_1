@@ -154,5 +154,38 @@ class SharedFunctions {
       updateProfileImageData(null);
     }
   }
+  Future<Map<String, dynamic>?> getDecryptedTransactions() async {
+    try {
+      final secureStorage = FlutterSecureStorage();
+      final userEmail = await secureStorage.read(key: 'user_email');
+
+      if (userEmail != null) {
+        // Make the HTTP request to get encrypted transactions
+        final response = await http.post(
+          Uri.parse('${Config.schoolBackendUrl}/get_transactions'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'email': userEmail,
+            'public_key': await secureStorage.read(key: 'public_key'),
+            'student_id': await secureStorage.read(key: 'student_id'),
+            'timestamp': DateTime.now().toIso8601String(), // Example timestamp
+          }),
+        );
+
+        if (response.statusCode == 200) {
+
+        } else {
+          print('Error: Failed to fetch encrypted transactions with status code ${response.statusCode}');
+          return null;
+        }
+      } else {
+        print('Error: User email not found in secure storage');
+        return null;
+      }
+    } catch (e) {
+      print('Error during encrypted transactions retrieval: $e');
+      return null;
+    }
+  }
 }
 

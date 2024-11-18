@@ -80,18 +80,13 @@ Future<Uint8List?> decryptPngData(String encryptedKeyBase64, String encryptedDat
     if (privateKeyPem != null) {
       print('Private key retrieved from secure storage');
       final encryptedKey = base64.decode(encryptedKeyBase64);
-      print('Encrypted AES key decoded from Base64: ${encryptedKey.length} bytes');
       final privateKey = _parsePrivateKeyFromPem(privateKeyPem);
       final aesKey = _decryptWithPrivateKey(privateKey, Uint8List.fromList(encryptedKey));
-      print('AES key decrypted: ${aesKey.length} bytes');
       final encryptedData = base64.decode(encryptedDataBase64);
-      print('Encrypted data decoded from Base64: ${encryptedData.length} bytes');
 
       if (encryptedData.length > 16) {
         final iv = encryptedData.sublist(0, 16);
-        print('IV extracted: ${iv.length} bytes');
         final cipherText = encryptedData.sublist(16);
-        print('CipherText extracted: ${cipherText.length} bytes');
 
         try {
           final decryptedData = _decryptWithAES(aesKey, iv, cipherText);
@@ -119,8 +114,60 @@ Future<void> _savePngToFile(Uint8List pngData) async {
     final filePath = '${directory.path}/profile_image.png';
     final file = File(filePath);
     await file.writeAsBytes(pngData);
-    print('PNG image saved to $filePath');
   } catch (e) {
     print('Error saving PNG file: $e');
+  }
+}
+
+Future<Uint8List?> decryptTransactionData(String encryptedKeyBase64, String encryptedDataBase64) async {
+  try {
+    final secureStorage = FlutterSecureStorage();
+    final privateKeyPem = await secureStorage.read(key: 'private_key');
+
+    if (privateKeyPem != null) {
+
+
+      // Decode the encrypted AES key from Base64
+      final encryptedKey = base64.decode(encryptedKeyBase64);
+      // Parse the private key from PEM format
+      final privateKey = _parsePrivateKeyFromPem(privateKeyPem);
+
+      // Decrypt the AES key using the private key
+      final aesKey = _decryptWithPrivateKey(privateKey, Uint8List.fromList(encryptedKey));
+
+      // Decode the encrypted transaction data from Base64
+      final encryptedData = base64.decode(encryptedDataBase64);
+      print('Encrypted data decoded from Base64: ${encryptedData.length} bytes');
+
+      // Ensure the encrypted data is large enough to contain an IV and ciphertext
+      if (encryptedData.length > 16) {
+        // Extract the Initialization Vector (IV)
+        final iv = encryptedData.sublist(0, 16);
+        print('IV extracted: ${iv.length} bytes');
+
+        // Extract the cipher text
+        final cipherText = encryptedData.sublist(16);
+        print('CipherText extracted: ${cipherText.length} bytes');
+
+        try {
+          // Decrypt the cipher text using the AES key and IV
+          final decryptedData = _decryptWithAES(aesKey, iv, cipherText);
+          print('Data successfully decrypted: ${decryptedData.length} bytes');
+
+          // Return the decrypted data
+          return decryptedData;
+        } catch (e) {
+          print('Error during AES decryption: $e');
+          throw Exception('AES decryption failed: $e');
+        }
+      } else {
+        throw Exception('Encrypted data is too short to contain a valid IV and ciphertext');
+      }
+    } else {
+      throw Exception('Private key not found in secure storage');
+    }
+  } catch (e) {
+    print('Error during hybrid transaction data decryption: $e');
+    return null;
   }
 }

@@ -29,11 +29,13 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
     _sharedFunctions.loadUserInfo(_updateUserInfo);
   }
 
-  void _updateUserInfo(String? firstName, String? lastName, String? graduationYear, String? email) {
+  void _updateUserInfo(String? firstName, String? lastName,
+      String? graduationYear, String? email) {
     setState(() {
       _firstName = firstName;
       _lastName = lastName;
-      _graduationYear = graduationYear != null ? graduationYear.substring(graduationYear.length - 2) : null;
+      _graduationYear = graduationYear != null ? graduationYear.substring(
+          graduationYear.length - 2) : null;
       _email = email;
     });
   }
@@ -45,7 +47,9 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   }
 
   void _onPageChanged(int index) {
-    _sharedFunctions.onPageChanged(index, (newIndex) => setState(() => _currentIndex = newIndex), _animationController);
+    _sharedFunctions.onPageChanged(
+        index, (newIndex) => setState(() => _currentIndex = newIndex),
+        _animationController);
   }
 
   void _onBottomNavTapped(int index) {
@@ -59,13 +63,48 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          PreferredSize(
-            preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.15),
+          Column(
+            children: [
+              SizedBox(height: MediaQuery
+                  .of(context)
+                  .size
+                  .height * 0.15),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: _onPageChanged,
+                  children: <Widget>[
+                    CardPage(
+                      firstName: _firstName,
+                      lastName: _lastName,
+                    ),
+                    TransactionPage(),
+                    ProfilePage(
+                      firstName: _firstName,
+                      lastName: _lastName,
+                      graduationYear: _graduationYear,
+                      email: _email,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
             child: Container(
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height * 0.14,
+              width: MediaQuery
+                  .of(context)
+                  .size
+                  .width,
+              height: MediaQuery
+                  .of(context)
+                  .size
+                  .height * 0.14,
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
@@ -107,25 +146,6 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
               ),
             ),
           ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              children: <Widget>[
-                CardPage(
-                  firstName: _firstName,
-                  lastName: _lastName,
-                ),
-                TransactionPage(),
-                ProfilePage(
-                  firstName: _firstName,
-                  lastName: _lastName,
-                  graduationYear: _graduationYear,
-                  email: _email,
-                ),
-              ],
-            ),
-          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -137,12 +157,14 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
         unselectedItemColor: Colors.grey,
         currentIndex: _currentIndex,
         onTap: _onBottomNavTapped,
-        selectedLabelStyle: TextStyle(fontFamily: 'Aeonik', fontWeight: FontWeight.bold),
+        selectedLabelStyle: TextStyle(
+            fontFamily: 'Aeonik', fontWeight: FontWeight.bold),
         unselectedLabelStyle: TextStyle(fontFamily: 'Aeonik'),
-        backgroundColor: Colors.white, // Change the background color to white
+        backgroundColor: Colors.white,
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: 'Card'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Transactions'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.history), label: 'Transactions'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
