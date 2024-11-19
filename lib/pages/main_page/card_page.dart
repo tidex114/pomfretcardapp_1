@@ -41,26 +41,36 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
   @override
   void initState() {
     super.initState();
+    _setInitialLoadingStates();
     _loadStoredData();
     _loadGreeting();
-    _loadProfileAndBarcode();
+  }
+
+  void _setInitialLoadingStates() {
+    setState(() {
+      _isLoadingBarcode = true;
+      _isLoadingProfileImage = true;
+    });
   }
 
   Future<void> _loadStoredData() async {
+    setState(() {
+      _isLoadingBarcode = true;
+      _isLoadingProfileImage = true;
+    });
     final barcodeData = await _secureStorage.read(key: 'barcode_data');
     final base64Png = await _secureStorage.read(key: 'profile_image');
 
-    Uint8List? profileImage;
-    if (base64Png != null) {
-      profileImage = base64Decode(base64Png);
+    if (barcodeData == null || base64Png == null) {
+      await _loadProfileAndBarcode();
+    } else {
+      setState(() {
+        _barcodeData = barcodeData;
+        _profileImage = base64Decode(base64Png);
+        _isLoadingBarcode = false;
+        _isLoadingProfileImage = false;
+      });
     }
-
-    setState(() {
-      _barcodeData = barcodeData;
-      _profileImage = profileImage;
-      _isLoadingBarcode = false;
-      _isLoadingProfileImage = false;
-    });
   }
 
   Future<void> _loadProfileAndBarcode() async {
@@ -90,8 +100,7 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
     setState(() {
       _profileImage = imageData;
       if (imageData != null) {
-        _secureStorage.write(
-            key: 'profile_image_data', value: base64Encode(imageData));
+        _secureStorage.write(key: 'profile_image', value: base64Encode(imageData));
       }
       _isLoadingProfileImage = false;
     });
@@ -106,7 +115,7 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
     } else {
       _selectedGreeting = _greetings[Random().nextInt(_greetings.length)];
       await _secureStorage.write(key: 'greeting', value: _selectedGreeting!);
-      setState(() {}); // Added to update UI with the new greeting
+      setState(() {});
     }
   }
 

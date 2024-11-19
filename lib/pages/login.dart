@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,10 +8,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'package:pomfretcardapp/pages/config.dart';
 import 'package:bcrypt/bcrypt.dart';
-import 'package:pointycastle/export.dart' as crypto;
-import 'dart:typed_data';
-import 'package:basic_utils/basic_utils.dart';
-import 'package:crypto_keys/crypto_keys.dart';
 import 'package:pomfretcardapp/services/rsa_key_pair.dart';
 
 import 'dart:math';

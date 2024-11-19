@@ -4,11 +4,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pin_code_fields/flutter_pin_code_fields.dart';
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:bcrypt/bcrypt.dart';  // Added bcrypt package
+import 'package:bcrypt/bcrypt.dart';
 import 'package:pomfretcardapp/main.dart';
 import 'package:pomfretcardapp/pages/create_pin.dart';
 import 'package:pomfretcardapp/pages/config.dart';
+import 'package:pomfretcardapp/services/rsa_key_pair.dart';
+import 'dart:async';
 
 class VerifyPinPage extends StatefulWidget {
   final String email;
@@ -28,22 +29,16 @@ class _VerifyPinPageState extends State<VerifyPinPage> {
   bool _isSubmitButtonActive = false;
 
   Future<void> verifyPin(String pin) async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
+
     String pinSalt = BCrypt.gensalt();
     String passwordSalt = BCrypt.gensalt();
-    // Hash the PIN using bcrypt
     String pinHash = BCrypt.hashpw(pin, pinSalt);
-
-    // Hash the password using bcrypt
     String passwordHash = BCrypt.hashpw(widget.password, passwordSalt);
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    // Call backend to verify the PIN and save the data
     try {
       final response = await http.post(
         Uri.parse('${Config.backendUrl}/verify_pin'),
@@ -57,6 +52,7 @@ class _VerifyPinPageState extends State<VerifyPinPage> {
         }),
       );
 
+      if (!mounted) return;
       if (response.statusCode == 200) {
         await _secureStorage.write(key: 'pin_hash', value: pinHash);
         await _secureStorage.write(key: 'pin_salt', value: pinSalt);
@@ -70,13 +66,23 @@ class _VerifyPinPageState extends State<VerifyPinPage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> loginUser() async {
+    if (!mounted) return;
+
     try {
       final saltResponse = await http.post(
         Uri.parse('${Config.backendUrl}/get_salt'),
@@ -84,63 +90,121 @@ class _VerifyPinPageState extends State<VerifyPinPage> {
         body: json.encode({'email': widget.email}),
       ).timeout(Duration(seconds: 10));
 
-      if (saltResponse.statusCode != 200) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (!mounted) return;
+      if (saltResponse.statusCode == 404) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not retrieve salt. Please try again.')),
+          SnackBar(content: Text('User not found')),
         );
         return;
       }
 
       final saltData = json.decode(saltResponse.body);
-      final String salt = saltData['password_salt'];
-      print(salt);
-      // Hash the password using the retrieved salt
+      final String? salt = saltData['password_salt'];
+      if (salt == null || salt.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User not found.')),
+        );
+        return;
+      }
       final String hashedPassword = BCrypt.hashpw(widget.password, salt);
+
       final response = await http.post(
         Uri.parse('${Config.backendUrl}/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+        body: json.encode({
           'email': widget.email,
           'hashed_password': hashedPassword,
+          'device_info': 'FlutterApp',
+          'session_token': await _secureStorage.read(key: 'session_token')
         }),
-      );
+      ).timeout(Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        String sessionToken = responseData['session_token'];
-        DateTime expiresAt = DateTime.now().add(Duration(days: 7));
+      if (!mounted) return;
+      if (response.statusCode == 403) {
+        final responseData = json.decode(response.body);
+        if (responseData['message'] == 'User account is frozen. Please contact IT support.') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Your account is frozen. Please contact IT support.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('You need to finish the registration process. Please create a PIN.')),
+          );
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => CreatePinPage(email: widget.email, password: widget.password)),
+          );
+        }
+      } else if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
 
-        await _secureStorage.write(key: 'session_token', value: sessionToken);
-        await _secureStorage.write(key: 'session_expires_at', value: expiresAt.toIso8601String());
-        await _secureStorage.write(key: 'user_email', value: widget.email);
-        await _secureStorage.write(key: 'first_name', value: responseData['first_name']);
-        await _secureStorage.write(key: 'last_name', value: responseData['last_name']);
-        await _secureStorage.write(key: 'graduation_year', value: responseData['graduation_year'].toString());
-        await _secureStorage.write(key: 'barcode', value: responseData['barcode']);
-        await _secureStorage.write(key: 'pin_hash', value: responseData['pin_hash']);
-        await _secureStorage.write(key: 'pin_salt', value: responseData['pin_salt']);
+        if (responseData['session_token'] != null) {
+          String sessionToken = responseData['session_token'];
+          DateTime expiresAt = DateTime.now().add(Duration(days: 7));
 
-        Navigator.pushReplacementNamed(context, '/mainPage');
-      } else if (response.statusCode == 403) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('You need to finish the registration process. Please create a PIN.')),
-        );
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => CreatePinPage(email: widget.email, password: widget.password)),
-        );
+          await _secureStorage.write(key: 'session_token', value: sessionToken);
+          await _secureStorage.write(key: 'session_expires_at', value: expiresAt.toIso8601String());
+          await _secureStorage.write(key: 'user_email', value: widget.email);
+          await _secureStorage.write(key: 'first_name', value: responseData['first_name']);
+          await _secureStorage.write(key: 'last_name', value: responseData['last_name']);
+          await _secureStorage.write(key: 'graduation_year', value: responseData['graduation_year'].toString());
+          await _secureStorage.write(key: 'barcode', value: responseData['barcode']);
+          await _secureStorage.write(key: 'pin_hash', value: responseData['pin_hash']);
+          await _secureStorage.write(key: 'pin_salt', value: responseData['pin_salt']);
+
+          await generateAndStorePrivateKey();
+
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/pinEntry');
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('It seems that the registration process was incomplete. Please create a PIN to finish your registration.')),
+          );
+        }
       } else {
         final responseData = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(responseData['message'] ?? 'An error occurred')),
         );
       }
+    } on TimeoutException catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Timeout error. Try again later.')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred during login. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred during login: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> generateAndStorePrivateKey() async {
+    try {
+      final keyPair = generateRSAKeyPair();
+      final publicKey = keyPair.publicKey;
+      final privateKey = keyPair.privateKey;
+
+      final secureStorage = FlutterSecureStorage();
+      final publicPem = encodePublicKeyToPem(publicKey);
+      final privatePem = encodePrivateKeyToPem(privateKey);
+
+      final userEmail = await secureStorage.read(key: 'user_email');
+      if (userEmail != null) {
+        await http.post(
+          Uri.parse('${Config.backendUrl}/store_public_key'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': userEmail, 'public_key': publicPem}),
+        );
+        await secureStorage.write(key: 'public_key', value: publicPem);
+        await secureStorage.write(key: 'private_key', value: privatePem);
+      }
+    } catch (e) {
+      print('Error during key generation: $e');
+      throw Exception('Key generation failed');
     }
   }
 
@@ -175,36 +239,37 @@ class _VerifyPinPageState extends State<VerifyPinPage> {
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
               SizedBox(
-                height: 100.0,  // Set desired height for the fields
+                height: 100.0,
                 child: PinCodeFields(
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   length: 4,
                   fieldBorderStyle: FieldBorderStyle.square,
                   responsive: true,
-                  fieldHeight: 60.0,  // Adjust the height here
-                  fieldWidth: 60.0,   // Adjust the width here
+                  fieldHeight: 60.0,
+                  fieldWidth: 60.0,
                   borderWidth: 0,
                   activeBorderColor: Colors.redAccent,
                   activeBackgroundColor: Color(0xFFE1DAE2),
                   borderRadius: BorderRadius.circular(15.0),
                   keyboardType: TextInputType.number,
                   obscureText: true,
-                  obscureCharacter: "●", // Use a filled circle to represent the digits
+                  obscureCharacter: "●",
                   fieldBackgroundColor: Color(0xFFF6F1F6),
                   onComplete: (output) {
+                    if (!mounted) return;
                     setState(() {
                       _code = output;
                       _isSubmitButtonActive = output.length == 4;
                     });
                   },
                   onChange: (output) {
+                    if (!mounted) return;
                     setState(() {
                       _isSubmitButtonActive = output.length == 4;
                     });
                   },
                 ),
               ),
-
               SizedBox(height: 20),
               _isLoading
                   ? CircularProgressIndicator(color: Colors.redAccent)

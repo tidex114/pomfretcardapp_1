@@ -4,8 +4,12 @@ import 'card_page.dart';
 import 'transactions_page.dart';
 import 'profile_page/profile_page.dart';
 import '../../services/shared_functions.dart';
+import 'package:pomfretcardapp/pages/config.dart';
 
 class MainPage extends StatefulWidget {
+
+
+
   @override
   _MainPageState createState() => _MainPageState();
 }
