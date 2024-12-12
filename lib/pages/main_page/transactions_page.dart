@@ -45,6 +45,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
   Future<void> _loadStudentId() async {
     try {
       studentId = await storage.read(key: 'barcode_data');
+      print(studentId);
       if (studentId != null) {
         await _loadInitialTransactions();
       } else {
@@ -98,7 +99,6 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
       }
       final publicKey = await storage.read(key: 'public_key');
       final email = await storage.read(key: 'user_email');
-
       final response = await http.post(
         Uri.parse('${Config.schoolBackendUrl}/get_transactions'),
         headers: {'Content-Type': 'application/json'},
@@ -112,29 +112,31 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
 
       if (response.statusCode == 200) {
         final responseBody = json.decode(response.body);
-        final encryptedKeyBase64 = responseBody['encrypted_key'];
-        final encryptedJsonBase64 = responseBody['encrypted_data'];
+        print('Response Body: $responseBody'); // Debug print
 
-        final decryptedJsonData = await decryptTransactionData(encryptedKeyBase64, encryptedJsonBase64);
+        final encryptedData = responseBody['encrypted_data'];
+        final encryptedKey = responseBody['encrypted_key'];
 
-        Map<String, dynamic>? decryptedJson;
-
-        if (decryptedJsonData != null && decryptedJsonData is Uint8List) {
-          final decryptedJsonString = utf8.decode(decryptedJsonData);
-          decryptedJson = json.decode(decryptedJsonString) as Map<String, dynamic>;
-        } else {
-          print('Error: Decrypted JSON data is null or invalid');
-          setState(() {
-            _loadError = true;
-            _errorMessage = 'Could not decrypt transaction data. Please try again later.';
-          });
-          return;
+        if (encryptedData == null || encryptedKey == null) {
+          throw Exception('Encrypted data or key is null');
         }
 
-        final responseData = decryptedJson;
-        List<Map<String, dynamic>> newTransactions = List<Map<String, dynamic>>.from(responseData['transactions']);
-        hasMore = responseData['has_more'];
-        latestTimestamp = DateTime.parse(responseData['latest_timestamp']);
+        final decryptedData = await decryptTransactionData(encryptedKey, encryptedData);
+        if (decryptedData == null) {
+          throw Exception('Decryption failed');
+        }
+        final decryptedJson = json.decode(utf8.decode(decryptedData));
+        print('Decrypted JSON: $decryptedJson'); // Debug print
+
+        final transactionsData = decryptedJson['transactions'];
+        final hasMore = decryptedJson['has_more'];
+        final latestTimestampStr = decryptedJson['latest_timestamp'];
+
+        if (transactionsData == null || hasMore == null || latestTimestampStr == null) {
+          throw Exception('One of the expected fields is null');
+        }
+
+        List<Map<String, dynamic>> newTransactions = List<Map<String, dynamic>>.from(transactionsData);
 
         setState(() {
           if (loadMore) {
@@ -144,23 +146,23 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
             transactions = newTransactions;
             _tileExpandedStates = List<bool>.filled(newTransactions.length, false);
           }
+          this.hasMore = hasMore;
+          this.latestTimestamp = DateTime.parse(latestTimestampStr);
+          print('Updated latestTimestamp: $latestTimestamp'); // Debug print
           _loadError = false;
         });
       } else if (response.statusCode == 404) {
-        print('No transactions found. Status code: 404');
         setState(() {
           _loadError = true;
           _errorMessage = 'No transactions yet.';
         });
       } else {
-        print('Failed to load transactions. Status code: ${response.statusCode}');
         setState(() {
           _loadError = true;
           _errorMessage = 'Could not load transactions. Please try again later.';
         });
       }
     } catch (e) {
-      print('Exception caught during transaction loading: $e');
       setState(() {
         _loadError = true;
         _errorMessage = 'Could not load transactions. Please check your connection.';
@@ -295,6 +297,15 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                       itemCount: transactions.length,
                       itemBuilder: (context, index) {
                         final transaction = transactions[index];
+                        final locationNames = {
+                          6: 'DM processing',
+                          7: 'The Tuck',
+                          2: 'School Store',
+                          1: 'Allowance',
+                        };
+                        final locationName = locationNames[transaction['location']] ?? 'Unknown Location';
+                        final formattedDate = DateFormat('MMM dd, HH:mm:ss').format(DateTime.parse('${transaction['qdate']} ${transaction['time']}'));
+
                         return Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8.0),
@@ -323,7 +334,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                             },
                             initiallyExpanded: _tileExpandedStates.length > index ? _tileExpandedStates[index] : false,
                             title: Text(
-                              transaction['transaction_place'] ?? 'Unknown',
+                              locationName,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontFamily: 'Aeonik',
@@ -331,7 +342,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                               ),
                             ),
                             subtitle: Text(
-                              transaction['transaction_date'] != null ? DateFormat('E, d MMM HH:mm').format(DateTime.parse(transaction['transaction_date']).toLocal()) : 'Unknown',
+                              formattedDate,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontFamily: 'Aeonik',
@@ -339,7 +350,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                               ),
                             ),
                             trailing: Text(
-                              '\$${transaction['transaction_sum'] ?? 0.0}',
+                              '\$${transaction['prices'].split(',').map((price) => double.parse(price)).reduce((a, b) => a + b).toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontFamily: 'Aeonik',
@@ -358,7 +369,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: _parseItems(transaction['items'] ?? ''),
+                                  children: _parseItems(transaction['items'], transaction['quantities'], transaction['prices']),
                                 ),
                               ),
                             ],
@@ -395,49 +406,38 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
     );
   }
 
-  List<Widget> _parseItems(String itemsString) {
+  List<Widget> _parseItems(String itemsString, String quantitiesString, String pricesString) {
     final theme = Theme.of(context);
-    if (itemsString.isEmpty) {
-      return [
-        Text(
-          'No items',
-          style: TextStyle(
-            fontSize: 16,
-            fontFamily: 'Aeonik',
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
-          ),
-        )
-      ];
-    }
     List<Widget> itemWidgets = [];
-    final items = itemsString.split(', ');
-    for (var item in items) {
-      final matches = RegExp(r'\{(.*?)\}\{(.*?)\}').firstMatch(item);
-      if (matches != null && matches.groupCount == 2) {
-        final itemName = matches.group(1) ?? '';
-        final itemPrice = matches.group(2) ?? '';
-        itemWidgets.add(Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              itemName,
-              style: TextStyle(
-                fontSize: 16,
-                fontFamily: 'Aeonik',
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
+    final items = itemsString.split(',');
+    final quantities = quantitiesString.split(',');
+    final prices = pricesString.split(',');
+
+    for (int i = 0; i < items.length; i++) {
+      final itemName = items[i].trim();
+      final itemQuantity = quantities[i].trim();
+      final itemPrice = prices[i].trim();
+      itemWidgets.add(Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            itemName,
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Aeonik',
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
             ),
-            Text(
-              '\$$itemPrice',
-              style: TextStyle(
-                fontSize: 16,
-                fontFamily: 'Aeonik',
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
+          ),
+          Text(
+            '$itemQuantity x \$$itemPrice',
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Aeonik',
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
             ),
-          ],
-        ));
-      }
+          ),
+        ],
+      ));
     }
     return itemWidgets;
   }

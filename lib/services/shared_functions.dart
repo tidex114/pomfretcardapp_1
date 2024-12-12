@@ -76,6 +76,7 @@ class SharedFunctions {
             if (decryptedJsonMap.containsKey('barcode') &&
                 decryptedJsonMap['barcode'] is int) {
               final String barcodeData = decryptedJsonMap['barcode'].toString();
+              print(barcodeData);
               updateBarcodeData(barcodeData);
             } else {
               print('Error: Barcode data is missing or not an integer');
