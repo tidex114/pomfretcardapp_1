@@ -28,14 +28,20 @@ class SettingsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Settings',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w400,
-              color: theme.colorScheme.onSurface,
-              fontFamily: 'Aeonik',
-            ),
+          Row(
+            children: [
+              Icon(Icons.settings, color: theme.colorScheme.onSurface, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500, // Increased weight
+                  color: theme.colorScheme.onSurface,
+                  fontFamily: 'Aeonik',
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 10),
           SwitchListTile(

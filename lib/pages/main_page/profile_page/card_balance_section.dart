@@ -1,6 +1,6 @@
-// card_balance_section.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:pomfretcardapp/services/shared_functions.dart';
 
 class CardBalanceSection extends StatefulWidget {
@@ -13,6 +13,7 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
   final SharedFunctions _sharedFunctions = SharedFunctions();
   String _balanceData = '\$ • • •';
   bool _isBalanceVisible = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -21,12 +22,16 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
   }
 
   Future<void> _loadBalance() async {
+    print('Starting _loadBalance...');
     await _sharedFunctions.loadBalanceData((balance) async {
+      print('Balance fetched: $balance');
       await _secureStorage.write(key: 'balance', value: balance);
       setState(() {
         _balanceData = balance;
+        _isLoading = false;
       });
     });
+    print('_loadBalance completed.');
   }
 
   Future<void> _toggleBalanceVisibility() async {
@@ -67,29 +72,52 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
         children: [
           GestureDetector(
             onTap: _toggleBalanceVisibility,
-            child: Text(
-              'Balance',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w400,
-                color: theme.colorScheme.onSurface,
-                fontFamily: 'Aeonik',
-              ),
+            child: Row(
+              children: [
+                Icon(Icons.account_balance_wallet, color: theme.colorScheme.onSurface, size: 21),
+                SizedBox(width: 8),
+                Text(
+                  'Balance',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface,
+                    fontFamily: 'Aeonik',
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 10),
           GestureDetector(
             onTap: _toggleBalanceVisibility,
             child: Container(
-              padding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
+              padding: EdgeInsets.symmetric(vertical: 5.0, horizontal: 20.0),
+              height: 50, // Fixed height
               decoration: BoxDecoration(
-                color: theme.colorScheme.background,
+                color: theme.brightness == Brightness.dark
+                    ? Colors.grey[800]
+                    : Colors.grey[200],
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  _isLoading
+                      ? Shimmer.fromColors(
+                    baseColor: Color(0xFFFFFFFF)!,
+                    highlightColor: Color(0xFF272727)!,
+                    child: Text(
+                      '\$ • • •',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                        fontFamily: 'Aeonik',
+                      ),
+                    ),
+                  )
+                      : Text(
                     _isBalanceVisible ? _balanceData : '\$ • • •',
                     style: TextStyle(
                       fontSize: 24,
@@ -98,18 +126,32 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
                       fontFamily: 'Aeonik',
                     ),
                   ),
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(9),
-                      color: theme.colorScheme.primary,
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      color: theme.colorScheme.onPrimary,
-                      size: 20,
-                    ),
+                  Row(
+                    children: [
+                      if (!_isLoading)
+                        IconButton(
+                          icon: Icon(Icons.refresh),
+                          onPressed: () {
+                            setState(() {
+                              _isLoading = true;
+                            });
+                            _loadBalance();
+                          },
+                        ),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(9),
+                          color: theme.colorScheme.primary,
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          color: theme.colorScheme.onPrimary,
+                          size: 20,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

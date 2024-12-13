@@ -98,68 +98,78 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
         });
       }
       final publicKey = await storage.read(key: 'public_key');
-      final email = await storage.read(key: 'user_email');
-      final response = await http.post(
-        Uri.parse('${Config.schoolBackendUrl}/get_transactions'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'student_id': studentId,
-          'timestamp': timestamp.toIso8601String(),
-          'public_key': publicKey,
-          'email': email,
-        }),
-      );
+      final firstName = await storage.read(key: 'first_name');
+      final lastName = await storage.read(key: 'last_name');
+      if (firstName != null && lastName != null && publicKey != null) {
+        final response = await http.post(
+          Uri.parse('${Config.schoolBackendUrl}/get_transactions'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'student_id': studentId,
+            'timestamp': timestamp.toIso8601String(),
+            'public_key': publicKey,
+            'first_name': firstName,
+            'last_name': lastName,
+          }),
+        );
 
-      if (response.statusCode == 200) {
-        final responseBody = json.decode(response.body);
-        print('Response Body: $responseBody'); // Debug print
+        if (response.statusCode == 200) {
+          final responseBody = json.decode(response.body);
+          print('Response Body: $responseBody'); // Debug print
 
-        final encryptedData = responseBody['encrypted_data'];
-        final encryptedKey = responseBody['encrypted_key'];
+          final encryptedData = responseBody['encrypted_data'];
+          final encryptedKey = responseBody['encrypted_key'];
 
-        if (encryptedData == null || encryptedKey == null) {
-          throw Exception('Encrypted data or key is null');
-        }
-
-        final decryptedData = await decryptTransactionData(encryptedKey, encryptedData);
-        if (decryptedData == null) {
-          throw Exception('Decryption failed');
-        }
-        final decryptedJson = json.decode(utf8.decode(decryptedData));
-        print('Decrypted JSON: $decryptedJson'); // Debug print
-
-        final transactionsData = decryptedJson['transactions'];
-        final hasMore = decryptedJson['has_more'];
-        final latestTimestampStr = decryptedJson['latest_timestamp'];
-
-        if (transactionsData == null || hasMore == null || latestTimestampStr == null) {
-          throw Exception('One of the expected fields is null');
-        }
-
-        List<Map<String, dynamic>> newTransactions = List<Map<String, dynamic>>.from(transactionsData);
-
-        setState(() {
-          if (loadMore) {
-            transactions.addAll(newTransactions);
-            _tileExpandedStates = List<bool>.from(_tileExpandedStates)..addAll(List<bool>.filled(newTransactions.length, false));
-          } else {
-            transactions = newTransactions;
-            _tileExpandedStates = List<bool>.filled(newTransactions.length, false);
+          if (encryptedData == null || encryptedKey == null) {
+            throw Exception('Encrypted data or key is null');
           }
-          this.hasMore = hasMore;
-          this.latestTimestamp = DateTime.parse(latestTimestampStr);
-          print('Updated latestTimestamp: $latestTimestamp'); // Debug print
-          _loadError = false;
-        });
-      } else if (response.statusCode == 404) {
-        setState(() {
-          _loadError = true;
-          _errorMessage = 'No transactions yet.';
-        });
+
+          final decryptedData = await decryptTransactionData(encryptedKey, encryptedData);
+          if (decryptedData == null) {
+            throw Exception('Decryption failed');
+          }
+          final decryptedJson = json.decode(utf8.decode(decryptedData));
+          print('Decrypted JSON: $decryptedJson'); // Debug print
+
+          final transactionsData = decryptedJson['transactions'];
+          final hasMore = decryptedJson['has_more'];
+          final latestTimestampStr = decryptedJson['latest_timestamp'];
+
+          if (transactionsData == null || hasMore == null || latestTimestampStr == null) {
+            throw Exception('One of the expected fields is null');
+          }
+
+          List<Map<String, dynamic>> newTransactions = List<Map<String, dynamic>>.from(transactionsData);
+
+          setState(() {
+            if (loadMore) {
+              transactions.addAll(newTransactions);
+              _tileExpandedStates = List<bool>.from(_tileExpandedStates)..addAll(List<bool>.filled(newTransactions.length, false));
+            } else {
+              transactions = newTransactions;
+              _tileExpandedStates = List<bool>.filled(newTransactions.length, false);
+            }
+            this.hasMore = hasMore;
+            this.latestTimestamp = DateTime.parse(latestTimestampStr);
+            print('Updated latestTimestamp: $latestTimestamp'); // Debug print
+            _loadError = false;
+          });
+        } else if (response.statusCode == 404) {
+          setState(() {
+            _loadError = true;
+            _errorMessage = 'No transactions yet.';
+          });
+        } else {
+          setState(() {
+            _loadError = true;
+            _errorMessage = 'Could not load transactions. Please try again later.';
+          });
+        }
       } else {
+        print('Error: User first name, last name, or public key not found in secure storage');
         setState(() {
           _loadError = true;
-          _errorMessage = 'Could not load transactions. Please try again later.';
+          _errorMessage = 'User first name, last name, or public key not found in secure storage';
         });
       }
     } catch (e) {
@@ -194,20 +204,21 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
-    return RefreshIndicator(
-      onRefresh: _reloadPage,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification scrollInfo) {
-          if (!_isLoadingMore && hasMore && scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
-            _loadMoreTransactions();
-          }
-          return false;
-        },
-        child: Padding(
-          padding: EdgeInsets.only(top: kToolbarHeight),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Transactions'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _reloadPage,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (!_isLoadingMore && hasMore && scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+              _loadMoreTransactions();
+            }
+            return false;
+          },
           child: ListView(
             children: [
-              SizedBox(height: 45.0), // Add this SizedBox for free space
               if (_isLoadingInitial)
                 Center(
                   child: CircularProgressIndicator(),
@@ -222,7 +233,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                         color: theme.colorScheme.onSurface,
                         size: 40.0,
                       ),
-                      SizedBox(height: 8.0),
+                      SizedBox(height: 15.0),
                       Text(
                         _errorMessage,
                         style: TextStyle(
@@ -273,6 +284,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                     ),
                   )
                 else ...[
+                    SizedBox(height: 45.0),
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(horizontal: 16.0),

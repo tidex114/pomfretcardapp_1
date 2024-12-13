@@ -57,24 +57,25 @@ class SharedFunctions {
 
   Future<void> loadBarcodeData(Function updateBarcodeData) async {
     try {
-      final userEmail = await _secureStorage.read(key: 'user_email');
-      if (userEmail != null) {
+      final firstName = await _secureStorage.read(key: 'first_name');
+      final lastName = await _secureStorage.read(key: 'last_name');
+      final publicKey = await _secureStorage.read(key: 'public_key');
+      if (firstName != null && lastName != null && publicKey != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_barcode'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
-            'email': userEmail,
-            'public_key': await _secureStorage.read(key: 'public_key')
+            'first_name': firstName,
+            'last_name': lastName,
+            'public_key': publicKey
           }),
         );
         if (response.statusCode == 200) {
-          final encryptedJsonBase64 = json.decode(
-              response.body)['encrypted_json'];
+          final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
           final decryptedJsonMap = await decryptJsonData(encryptedJsonBase64);
 
-          if (decryptedJsonMap['email'] == userEmail) {
-            if (decryptedJsonMap.containsKey('barcode') &&
-                decryptedJsonMap['barcode'] is int) {
+          if (decryptedJsonMap['first_name'] == firstName && decryptedJsonMap['last_name'] == lastName) {
+            if (decryptedJsonMap.containsKey('barcode') && decryptedJsonMap['barcode'] is int) {
               final String barcodeData = decryptedJsonMap['barcode'].toString();
               print(barcodeData);
               updateBarcodeData(barcodeData);
@@ -83,16 +84,15 @@ class SharedFunctions {
               updateBarcodeData("Unknown");
             }
           } else {
-            print('Error: Email mismatch');
-            updateBarcodeData("Email mismatch");
+            print('Error: Name mismatch');
+            updateBarcodeData("Name mismatch");
           }
         } else {
-          print(
-              'Error: Failed to fetch barcode with status code \${response.statusCode}');
+          print('Error: Failed to fetch barcode with status code ${response.statusCode}');
           updateBarcodeData("Unknown");
         }
       } else {
-        print('Error: User email not found in secure storage');
+        print('Error: User first name or last name not found in secure storage');
         updateBarcodeData("Unknown");
       }
     } catch (e) {
@@ -102,38 +102,49 @@ class SharedFunctions {
   }
   Future<void> loadBalanceData(Function updateBalanceData) async {
     try {
-      final userEmail = await _secureStorage.read(key: 'user_email');
-      if (userEmail != null) {
+      print('Starting loadBalanceData...');
+      final firstName = await _secureStorage.read(key: 'first_name');
+      final lastName = await _secureStorage.read(key: 'last_name');
+      final publicKey = await _secureStorage.read(key: 'public_key');
+      print('Retrieved from secure storage - First Name: $firstName, Last Name: $lastName, Public Key: $publicKey');
+
+      if (firstName != null && lastName != null && publicKey != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_balance'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
-            'email': userEmail,
-            'public_key': await _secureStorage.read(key: 'public_key')
+            'first_name': firstName,
+            'last_name': lastName,
+            'public_key': publicKey
           }),
         );
+        print('HTTP response status: ${response.statusCode}');
+        print('HTTP response body: ${response.body}');
+
         if (response.statusCode == 200) {
           final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
           final decryptedJsonMap = await decryptJsonData(encryptedJsonBase64);
+          print('Decrypted JSON Map: $decryptedJsonMap');
 
-          if (decryptedJsonMap['email'] == userEmail) {
+          if (decryptedJsonMap['first_name'] == firstName && decryptedJsonMap['last_name'] == lastName) {
             if (decryptedJsonMap.containsKey('remaining_balance')) {
               final String balanceData = '\$${decryptedJsonMap['remaining_balance'].toString()}';
+              print('Balance Data: $balanceData');
               updateBalanceData(balanceData);
             } else {
               print('Error: Balance data is missing');
               updateBalanceData('\$ • • •');
             }
           } else {
-            print('Error: Email mismatch');
-            updateBalanceData('Email mismatch');
+            print('Error: Name mismatch');
+            updateBalanceData('Name mismatch');
           }
         } else {
-          print('Error: Failed to fetch balance with status code \${response.statusCode}');
+          print('Error: Failed to fetch balance with status code ${response.statusCode}');
           updateBalanceData('\$ • • •');
         }
       } else {
-        print('Error: User email not found in secure storage');
+        print('Error: User first name, last name, or public key not found in secure storage');
         updateBalanceData('\$ • • •');
       }
     } catch (e) {
@@ -155,24 +166,23 @@ class SharedFunctions {
 
   Future<void> loadProfileImageData(Function updateProfileImageData) async {
     try {
-      final secureStorage = FlutterSecureStorage();
-      final userEmail = await secureStorage.read(key: 'user_email');
-      if (userEmail != null) {
+      final firstName = await _secureStorage.read(key: 'first_name');
+      final lastName = await _secureStorage.read(key: 'last_name');
+      final publicKey = await _secureStorage.read(key: 'public_key');
+      if (firstName != null && lastName != null && publicKey != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_profile_image'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
-            'email': userEmail,
-            'public_key': await secureStorage.read(key: 'public_key')
+            'first_name': firstName,
+            'last_name': lastName,
+            'public_key': publicKey
           }),
         );
         if (response.statusCode == 200) {
-          final encryptedKeyBase64 = json.decode(
-              response.body)['encrypted_key'];
-          final encryptedPhotoBase64 = json.decode(
-              response.body)['encrypted_photo'];
-          final decryptedImageData = await decryptPngData(
-              encryptedKeyBase64, encryptedPhotoBase64);
+          final encryptedKeyBase64 = json.decode(response.body)['encrypted_key'];
+          final encryptedPhotoBase64 = json.decode(response.body)['encrypted_photo'];
+          final decryptedImageData = await decryptPngData(encryptedKeyBase64, encryptedPhotoBase64);
 
           if (decryptedImageData != null && decryptedImageData is Uint8List) {
             await _savePngToFlutterStorage(decryptedImageData);
@@ -182,13 +192,11 @@ class SharedFunctions {
             updateProfileImageData(null);
           }
         } else {
-          print(
-              'Error: Failed to fetch profile picture with status code ${response
-                  .statusCode}');
+          print('Error: Failed to fetch profile picture with status code ${response.statusCode}');
           updateProfileImageData(null);
         }
       } else {
-        print('Error: User email not found in secure storage');
+        print('Error: User first name or last name not found in secure storage');
         updateProfileImageData(null);
       }
     } catch (e) {

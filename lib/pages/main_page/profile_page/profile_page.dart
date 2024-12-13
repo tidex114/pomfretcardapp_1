@@ -64,26 +64,39 @@ class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClient
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
-    return RefreshIndicator(
-      onRefresh: _refreshProfilePage,
-      child: SingleChildScrollView(
-        padding: EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
-        physics: AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.15), // Add this SizedBox
-            TopProfileSection(
-              firstName: widget.firstName,
-              lastName: widget.lastName,
-              graduationYear: widget.graduationYear,
-              email: widget.email,
-              profileImage: _profileImage,
-            ),
-            SizedBox(height: 20),
-            CardBalanceSection(),
-            SizedBox(height: 20),
-            SettingsSection(themeNotifier: widget.themeNotifier),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Profile'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshProfilePage,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              SizedBox(height: 55),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: TopProfileSection(
+                  firstName: widget.firstName,
+                  lastName: widget.lastName,
+                  graduationYear: widget.graduationYear,
+                  email: widget.email,
+                  profileImage: _profileImage,
+                ),
+              ),
+              SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: CardBalanceSection(),
+              ),
+              SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: SettingsSection(themeNotifier: widget.themeNotifier),
+              ),
+            ],
+          ),
         ),
       ),
     );
