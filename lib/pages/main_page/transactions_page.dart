@@ -228,6 +228,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      SizedBox(height: 45.0),
                       Icon(
                         _errorMessage == 'No transactions yet.' ? Icons.info_outline : Icons.warning,
                         color: theme.colorScheme.onSurface,

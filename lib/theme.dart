@@ -7,6 +7,22 @@ final ThemeData lightTheme = ThemeData(
     primary: Color(0xFFF43C3C),
     secondary: Color(0xFFF43C3C),
   ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: Color(0xFFE0E0E0), // Colors.grey[200]
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10), // Consistent corner rounding
+      borderSide: BorderSide(color: Color(0xFF03DAC6)), // Input Border (focused)
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10), // Consistent corner rounding
+      borderSide: BorderSide(color: Color(0xFF3E3E3E)), // Borders
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10), // Consistent corner rounding
+      borderSide: BorderSide(color: Color(0xFF03DAC6)), // Input Border (focused)
+    ),
+  ),
   // Define other light theme properties
 );
 
@@ -26,36 +42,23 @@ final ThemeData darkTheme = ThemeData(
     onBackground: Color(0xFFE0E0E0), // Primary Text
     onError: Color(0xFFFFFFFF), // Error Text
   ),
-  appBarTheme: AppBarTheme(
-    backgroundColor: Color(0xFF1E1E1E), // Specific color for header tab
-  ),
-  bottomNavigationBarTheme: BottomNavigationBarThemeData(
-    backgroundColor: Color(0xFF1E1E1E), // Specific color for nav bar
-    selectedItemColor: Color(0xFFF43C3C), // Primary Accent
-    unselectedItemColor: Color(0xFFB0B0B0), // Secondary Text
-  ),
-  textTheme: TextTheme(
-    bodyLarge: TextStyle(color: Color(0xFFE0E0E0)), // Primary Text
-    bodyMedium: TextStyle(color: Color(0xFFB0B0B0)), // Secondary Text
-    headlineLarge: TextStyle(color: Color(0xFFE0E0E0)), // Primary Text
-    headlineMedium: TextStyle(color: Color(0xFFE0E0E0)), // Primary Text
-  ),
-  iconTheme: IconThemeData(
-    color: Color(0xFFE0E0E0), // Primary Text
-  ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: Color(0xFF1E1E1E), // Input Fields background
+    fillColor: Color(0xFF424242), // Colors.grey[800]
     border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10), // Consistent corner rounding
       borderSide: BorderSide(color: Color(0xFF03DAC6)), // Input Border (focused)
     ),
     enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10), // Consistent corner rounding
       borderSide: BorderSide(color: Color(0xFF3E3E3E)), // Borders
     ),
     focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10), // Consistent corner rounding
       borderSide: BorderSide(color: Color(0xFF03DAC6)), // Input Border (focused)
     ),
   ),
+  // Define other dark theme properties
   dividerColor: Color(0xFF2E2E2E), // Dividers
   buttonTheme: ButtonThemeData(
     buttonColor: Color(0xFFF43C3C), // Primary Button Background

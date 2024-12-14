@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pomfretcardapp/pages/main_page/profile_page/top_profile_section.dart';
 import 'package:pomfretcardapp/pages/main_page/profile_page/card_balance_section.dart';
 import 'package:pomfretcardapp/pages/main_page/profile_page/settings_section.dart';
+import 'package:pomfretcardapp/pages/main_page/profile_page/report_a_bug.dart';
 import 'package:pomfretcardapp/services/shared_functions.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -60,6 +61,15 @@ class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClient
     setState(() {});
   }
 
+  void _showReportBugDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ReportBugForm();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -95,6 +105,26 @@ class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClient
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: SettingsSection(themeNotifier: widget.themeNotifier),
               ),
+              SizedBox(height: 20),
+              GestureDetector(
+                onTap: _showReportBugDialog,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bug_report, color: theme.colorScheme.primary),
+                    SizedBox(width: 8),
+                    Text(
+                      'Found a bug?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontFamily: 'Aeonik',
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
             ],
           ),
         ),
