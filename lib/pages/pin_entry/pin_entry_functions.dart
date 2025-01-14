@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'WelcomeBackPage.dart';
 import 'pin_entry_controller.dart';
 import 'package:pomfretcardapp/pages/login.dart';
+
 
 Future<void> logout(BuildContext context, FlutterSecureStorage secureStorage) async {
   await secureStorage.delete(key: 'session_token');
@@ -115,6 +117,7 @@ void showWarningDialogWithTimer(BuildContext context, int lockLevel, StateSetter
   );
 }
 
+
 Future<void> verifyPin({
   required BuildContext context,
   required bool isLocked,
@@ -172,7 +175,29 @@ Future<void> verifyPin({
     );
     await Future.delayed(Duration(milliseconds: 300));
     await Future.delayed(Duration(milliseconds: 1500));
-    Navigator.pushReplacementNamed(context, '/mainPage');
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        // Increase this Duration to slow down the slide-in
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (context, animation, secondaryAnimation) => WelcomeBackPageWidget(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          final tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+          final offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          );
+        },
+      ),
+    );
   } else {
     attemptsLeft--;
     pinController.clear();

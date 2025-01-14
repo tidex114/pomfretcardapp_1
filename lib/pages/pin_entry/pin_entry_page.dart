@@ -11,17 +11,27 @@ class PinEntryPage extends StatefulWidget {
   State<PinEntryPage> createState() => _PinEntryPageState();
 }
 
-class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderStateMixin {
+class _PinEntryPageState extends State<PinEntryPage>
+    with TickerProviderStateMixin {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   late PinEntryController _pinEntryController;
-  late AnimationController _animationController;
   late FlutterSecureStorage _secureStorage;
+
+  // Existing animation controller (for success?), plus new ones:
+  late AnimationController _animationController;
+
+  // Controller + animation for SHAKE
+  late AnimationController _shakeController;
+  late Animation<Offset> _shakeAnimation;
+
   bool _isLocked = false;
   bool _isLoading = false;
   bool _isPinValid = false;
+  bool _isWrongPin = false; // <-- NEW: track if the current attempt is wrong
+
   int _lockLevel = 0;
   int _attemptsLeft = 3;
-  Duration _remainingLockTime = Duration(seconds: 0);
+  Duration _remainingLockTime = const Duration(seconds: 0);
   String _code = '';
 
   @override
@@ -29,8 +39,23 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
     super.initState();
     _pinEntryController = PinEntryController(pinLength: 4);
     _pinEntryController.addListener(_onPinChanged);
-    _animationController = AnimationController(vsync: this, duration: Duration(milliseconds: 500));
-    _secureStorage = FlutterSecureStorage();
+
+    _animationController =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+
+    _secureStorage = const FlutterSecureStorage();
+
+    // 1) Initialize a controller for shaking the dot row
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    // 2) Define a tween that moves the row a small amount left/right (elastic)
+    _shakeAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.04, 0), // a small horizontal shift
+    ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeController);
   }
 
   @override
@@ -38,6 +63,7 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
     _pinEntryController.removeListener(_onPinChanged);
     _pinEntryController.dispose();
     _animationController.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -45,12 +71,12 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
     setState(() {
       _code = _pinEntryController.enteredPin.join();
     });
-    onPinChanged(setState);
+    onPinChanged(setState); // from pin_entry_functions.dart
   }
 
   void _onDigitTap(String digit) {
     onDigitTap(digit, _pinEntryController, () async {
-      await Future.delayed(Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 300));
       _verifyPin();
     });
   }
@@ -62,12 +88,34 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
   void _lockUser() {
     setState(() {
       _isLocked = true;
-      _remainingLockTime = Duration(seconds: 30); // Example lock time
+      _remainingLockTime = const Duration(seconds: 30); // Example lock time
     });
     showLockDialog(context, _remainingLockTime);
   }
 
   Future<void> _verifyPin() async {
+    // We call the existing verifyPin from pin_entry_functions.dart
+    // but we’ll intercept the "incorrect" scenario to do the shake.
+    final bool wasValid = await _callVerifyPinAndReturnResult();
+    if (!wasValid) {
+      // 1) Turn on red color
+      setState(() => _isWrongPin = true);
+
+      // 2) Play the shake animation from start
+      _shakeController.forward(from: 0.0).then((_) async {
+        // Optional small wait so the red color is visible briefly
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // 3) Reset red color and clear the PIN
+        setState(() => _isWrongPin = false);
+        _pinEntryController.clear();
+      });
+    }
+  }
+
+  Future<bool> _callVerifyPinAndReturnResult() async {
+    // We'll create a "completer" or a local bool to detect correctness
+    bool pinValid = false;
     await verifyPin(
       context: context,
       isLocked: _isLocked,
@@ -80,8 +128,17 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
       lockLevel: _lockLevel,
       attemptsLeft: _attemptsLeft,
       lockUser: _lockUser,
-      setState: setState,
+      setState: (fn) {
+        // The verifyPin method calls setState on these variables.
+        // We can manually capture if the result was correct or not:
+        setState(() {
+          fn(); // Actually update the local states
+          pinValid = _isPinValid; // updated inside verifyPin on success/fail
+          _attemptsLeft = _attemptsLeft; // also might be changed in verifyPin
+        });
+      },
     );
+    return pinValid;
   }
 
   Future<void> _logout() async {
@@ -101,14 +158,15 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
         body: SafeArea(
           top: true,
           child: Align(
-            alignment: AlignmentDirectional(0, 0),
+            alignment: const AlignmentDirectional(0, 0),
             child: Padding(
-              padding: EdgeInsets.all(10),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 mainAxisSize: MainAxisSize.max,
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // The top logo
                   Row(
                     mainAxisSize: MainAxisSize.max,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -125,9 +183,11 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                       ),
                     ],
                   ),
+
+                  // The PIN entry UI
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(10),
                       child: Row(
                         mainAxisSize: MainAxisSize.max,
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -139,25 +199,23 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
+                                // The container that holds the 4 PIN dots + keypad
                                 Container(
                                   width: double.infinity,
                                   height: double.infinity,
-                                  constraints: BoxConstraints(
+                                  constraints: const BoxConstraints(
                                     maxWidth: 280,
                                     maxHeight: 430,
                                   ),
                                   decoration: BoxDecoration(
-                                    boxShadow: [
+                                    boxShadow: const [
                                       BoxShadow(
                                         blurRadius: 4,
                                         color: Color(0x33000000),
-                                        offset: Offset(
-                                          0,
-                                          2,
-                                        ),
+                                        offset: Offset(0, 2),
                                       )
                                     ],
-                                    gradient: LinearGradient(
+                                    gradient: const LinearGradient(
                                       colors: [Color(0xFFECECEC), Colors.white],
                                       stops: [0, 0.05],
                                       begin: AlignmentDirectional(0, -1),
@@ -168,15 +226,16 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                                   child: Column(
                                     mainAxisSize: MainAxisSize.max,
                                     children: [
+                                      // "Security PIN" text
                                       Expanded(
                                         child: Align(
-                                          alignment: AlignmentDirectional(0, 0),
+                                          alignment: const AlignmentDirectional(0, 0),
                                           child: Padding(
-                                            padding: EdgeInsetsDirectional.fromSTEB(30, 0, 30, 0),
+                                            padding: const EdgeInsetsDirectional.fromSTEB(30, 0, 30, 0),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.max,
                                               mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
+                                              children: const [
                                                 Align(
                                                   alignment: AlignmentDirectional(0, 0),
                                                   child: Text(
@@ -194,322 +253,90 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                                           ),
                                         ),
                                       ),
+
+                                      // **** The PIN DOTS row ****
+                                      // We wrap them in a SlideTransition so we can shake them
+                                      SlideTransition(
+                                        position: _shakeAnimation,
+                                        child: Expanded(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.max,
+                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                            children: List.generate(4, (index) {
+                                              final bool isFilled = _pinEntryController.enteredPin.length > index;
+
+                                              return AnimatedContainer(
+                                                duration: const Duration(milliseconds: 150),
+                                                width: 20,
+                                                height: 20,
+                                                decoration: BoxDecoration(
+                                                  // If dot is filled AND we're wrongPin => red
+                                                  // If dot is filled AND not wrong => black
+                                                  // If dot is not filled => grey
+                                                  color: isFilled
+                                                      ? (_isWrongPin ? Colors.red : Colors.black)
+                                                      : const Color(0xFFE0E3E7),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: const Color(0xFFE0E3E7),
+                                                  ),
+                                                ),
+                                              );
+                                            }),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // The Keypad
                                       Expanded(
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
                                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                          children: List.generate(4, (index) {
-                                            return AnimatedContainer(
-                                              duration: Duration(milliseconds: 150),
-                                              width: 20,
-                                              height: 20,
-                                              decoration: BoxDecoration(
-                                                color: _pinEntryController.enteredPin.length > index
-                                                    ? Colors.black
-                                                    : Color(0xFFE0E3E7),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Color(0xFFE0E3E7)),
-                                              ),
-                                            );
-                                          }),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('1'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '1',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('2'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '2',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('3'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '3',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                            _digitButton('1'),
+                                            _digitButton('2'),
+                                            _digitButton('3'),
                                           ],
                                         ),
                                       ),
                                       Expanded(
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                           children: [
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('4'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '4',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('5'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '5',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('6'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '6',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                            _digitButton('4'),
+                                            _digitButton('5'),
+                                            _digitButton('6'),
                                           ],
                                         ),
                                       ),
                                       Expanded(
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                           children: [
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('7'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '7',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('8'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '8',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('9'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '9',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                            _digitButton('7'),
+                                            _digitButton('8'),
+                                            _digitButton('9'),
                                           ],
                                         ),
                                       ),
                                       Expanded(
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                           children: [
+                                            // Empty
                                             Expanded(
                                               child: Container(
                                                 width: 100,
                                                 height: 100,
-                                                decoration: BoxDecoration(),
+                                                decoration: const BoxDecoration(),
                                               ),
                                             ),
-                                            Expanded(
-                                              child: InkWell(
-                                                splashColor: Colors.transparent,
-                                                focusColor: Colors.transparent,
-                                                hoverColor: Colors.transparent,
-                                                highlightColor: Colors.transparent,
-                                                onTap: () => _onDigitTap('0'),
-                                                child: Container(
-                                                  width: 100,
-                                                  height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
-                                                    alignment: AlignmentDirectional(0, 0),
-                                                    child: Text(
-                                                      '0',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Inter',
-                                                        fontSize: 24,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                            // Zero
+                                            _digitButton('0'),
+                                            // Backspace
                                             Expanded(
                                               child: InkWell(
                                                 splashColor: Colors.transparent,
@@ -520,8 +347,8 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                                                 child: Container(
                                                   width: 100,
                                                   height: 100,
-                                                  decoration: BoxDecoration(),
-                                                  child: Align(
+                                                  decoration: const BoxDecoration(),
+                                                  child: const Align(
                                                     alignment: AlignmentDirectional(0, 0),
                                                     child: Icon(
                                                       Icons.backspace,
@@ -538,29 +365,31 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                                     ],
                                   ),
                                 ),
+
+                                // The bottom "Logout" part
                                 Container(
                                   width: double.infinity,
                                   height: 81,
-                                  constraints: BoxConstraints(
+                                  constraints: const BoxConstraints(
                                     maxWidth: 280,
                                     maxHeight: 81,
                                   ),
-                                  decoration: BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     color: Color(0x00FFFFFF),
                                   ),
                                   child: Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(0, 0, 0, 30),
+                                    padding: const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 30),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.max,
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Divider(
+                                        const Divider(
                                           thickness: 2,
                                           color: Color(0xFFE0E3E7),
                                         ),
                                         TextButton(
                                           onPressed: _logout,
-                                          child: Text(
+                                          child: const Text(
                                             'Logout',
                                             style: TextStyle(
                                               fontFamily: 'Inter',
@@ -583,6 +412,36 @@ class _PinEntryPageState extends State<PinEntryPage> with SingleTickerProviderSt
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper to make a digit button
+  Widget _digitButton(String digit) {
+    return Expanded(
+      child: InkWell(
+        splashColor: Colors.transparent,
+        focusColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        onTap: () => _onDigitTap(digit),
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: const BoxDecoration(),
+          child: Align(
+            alignment: const AlignmentDirectional(0, 0),
+            child: Text(
+              digit,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 24,
+                letterSpacing: 0.0,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
