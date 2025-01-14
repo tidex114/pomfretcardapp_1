@@ -253,121 +253,125 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
               SizedBox(height: 30),
-              Container(
-                padding: EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 0,
-                      blurRadius: 7,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Sign In",
-                      textAlign: TextAlign.start,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Aeonik',
+              Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: 450),
+                  padding: EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.5),
+                        spreadRadius: 0,
+                        blurRadius: 7,
+                        offset: Offset(0, 3),
                       ),
-                    ),
-                    SizedBox(height: 20),
-                    TextField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.email, color: Colors.grey),
-                        hintText: '@pomfret.org email',
-                        filled: true,
-                        fillColor: Color(0xFFE1DAE2),
-                        hintStyle: TextStyle(color: Color(0xFF57636C), fontFamily: 'Aeonik'),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Sign In",
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Aeonik',
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                        errorText: _emailError,
                       ),
-                    ),
-                    SizedBox(height: 24),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _isPasswordHidden,
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.lock, color: Colors.grey),
-                        hintText: 'Password',
-                        filled: true,
-                        fillColor: Color(0xFFE1DAE2),
-                        hintStyle: TextStyle(color: Color(0xFF57636C), fontFamily: 'Aeonik'),
-                        suffixIcon: IconButton(
-                          icon: Icon(_isPasswordHidden ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordHidden = !_isPasswordHidden;
-                            });
+                      SizedBox(height: 20),
+                      TextField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.email, color: Colors.grey),
+                          hintText: '@pomfret.org email',
+                          filled: true,
+                          fillColor: Color(0xFFE1DAE2),
+                          hintStyle: TextStyle(color: Color(0xFF57636C), fontFamily: 'Aeonik'),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          errorText: _emailError,
+                        ),
+                      ),
+                      SizedBox(height: 24),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: _isPasswordHidden,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                          hintText: 'Password',
+                          filled: true,
+                          fillColor: Color(0xFFE1DAE2),
+                          hintStyle: TextStyle(color: Color(0xFF57636C), fontFamily: 'Aeonik'),
+                          suffixIcon: IconButton(
+                            icon: Icon(_isPasswordHidden ? Icons.visibility : Icons.visibility_off),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordHidden = !_isPasswordHidden;
+                              });
+                            },
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          errorText: _passwordError,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/forgot-password');
                           },
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                        errorText: _passwordError,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/forgot-password');
-                        },
-                        child: Text(
-                          'Forgot Password?',
-                          style: TextStyle(
-                              color: Color(0xFF779FF3),
-                              fontSize: 16,
-                              fontFamily: 'Aeonik',
-                              fontWeight: FontWeight.w500
+                          child: Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                                color: Color(0xFF779FF3),
+                                fontSize: 16,
+                                fontFamily: 'Aeonik',
+                                fontWeight: FontWeight.w500
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 20),
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        minimumSize: Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                      SizedBox(height: 20),
+                      _isLoading
+                          ? Center(child: CircularProgressIndicator())
+                          : ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        onPressed: _login,
+                        child: Text(
+                          'Sign In',
+                          style: TextStyle(fontSize: 18, fontFamily: 'Aeonik', fontWeight: FontWeight.bold),
                         ),
                       ),
-                      onPressed: _login,
-                      child: Text(
-                        'Sign In',
-                        style: TextStyle(fontSize: 18, fontFamily: 'Aeonik', fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                  ],
+                      SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
+
               SizedBox(height: 20),
               Center(
                 child: RichText(
