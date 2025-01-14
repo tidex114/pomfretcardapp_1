@@ -65,7 +65,6 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
       _lastName = lastName;
       _graduationYear = graduationYear?.substring(graduationYear.length - 2);
       _email = email;
-      print('looaded');
     });
 
     await _loadBarcodeData();
@@ -139,7 +138,6 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     _title = widget.hashCode;
     _loadUserInfo();
-    print('123123123');
     return Scaffold(
       body: PageView(
         controller: _pageController,

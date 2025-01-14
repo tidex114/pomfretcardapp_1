@@ -22,7 +22,6 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
   }
 
   Future<void> _loadBalance() async {
-    print('Starting _loadBalance...');
     await _sharedFunctions.loadBalanceData((balance) async {
       print('Balance fetched: $balance');
       await _secureStorage.write(key: 'balance', value: balance);
@@ -31,7 +30,6 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
         _isLoading = false;
       });
     });
-    print('_loadBalance completed.');
   }
 
   Future<void> _toggleBalanceVisibility() async {

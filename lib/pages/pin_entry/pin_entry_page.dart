@@ -4,6 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'pin_entry_controller.dart';
 import 'pin_entry_functions.dart';
 
+
+
 class PinEntryPage extends StatefulWidget {
   const PinEntryPage({super.key});
 
@@ -131,6 +133,7 @@ class _PinEntryPageState extends State<PinEntryPage>
     final bool wasValid = await _callVerifyPinAndReturnResult();
     if (!wasValid) {
       // 1) Turn on red color
+      if (!mounted) return;
       setState(() => _isWrongPin = true);
 
       // 2) Play the shake animation from the start
@@ -139,11 +142,13 @@ class _PinEntryPageState extends State<PinEntryPage>
         await Future.delayed(const Duration(milliseconds: 300));
 
         // 3) Reset red color and clear the PIN
+        if (!mounted) return;
         setState(() => _isWrongPin = false);
         _pinEntryController.clear();
       });
     }
   }
+
 
   Future<bool> _callVerifyPinAndReturnResult() async {
     bool pinValid = false;
@@ -160,6 +165,7 @@ class _PinEntryPageState extends State<PinEntryPage>
       attemptsLeft: _attemptsLeft,
       lockUser: _lockUser,
       setState: (fn) {
+        if (!mounted) return; // Ensure widget is still mounted
         setState(() {
           fn();
           pinValid = _isPinValid;
@@ -169,6 +175,7 @@ class _PinEntryPageState extends State<PinEntryPage>
     );
     return pinValid;
   }
+
 
   Future<void> _logout() async {
     await logout(context, _secureStorage);

@@ -77,7 +77,6 @@ class SharedFunctions {
           if (decryptedJsonMap['first_name'] == firstName && decryptedJsonMap['last_name'] == lastName) {
             if (decryptedJsonMap.containsKey('barcode') && decryptedJsonMap['barcode'] is int) {
               final String barcodeData = decryptedJsonMap['barcode'].toString();
-              print(barcodeData);
               updateBarcodeData(barcodeData);
             } else {
               print('Error: Barcode data is missing or not an integer');
@@ -102,12 +101,9 @@ class SharedFunctions {
   }
   Future<void> loadBalanceData(Function updateBalanceData) async {
     try {
-      print('Starting loadBalanceData...');
       final firstName = await _secureStorage.read(key: 'first_name');
       final lastName = await _secureStorage.read(key: 'last_name');
       final publicKey = await _secureStorage.read(key: 'public_key');
-      print('Retrieved from secure storage - First Name: $firstName, Last Name: $lastName, Public Key: $publicKey');
-
       if (firstName != null && lastName != null && publicKey != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_balance'),
@@ -118,18 +114,14 @@ class SharedFunctions {
             'public_key': publicKey
           }),
         );
-        print('HTTP response status: ${response.statusCode}');
-        print('HTTP response body: ${response.body}');
 
         if (response.statusCode == 200) {
           final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
           final decryptedJsonMap = await decryptJsonData(encryptedJsonBase64);
-          print('Decrypted JSON Map: $decryptedJsonMap');
 
           if (decryptedJsonMap['first_name'] == firstName && decryptedJsonMap['last_name'] == lastName) {
             if (decryptedJsonMap.containsKey('remaining_balance')) {
               final String balanceData = '\$${decryptedJsonMap['remaining_balance'].toString()}';
-              print('Balance Data: $balanceData');
               updateBalanceData(balanceData);
             } else {
               print('Error: Balance data is missing');
@@ -158,7 +150,6 @@ class SharedFunctions {
       final secureStorage = FlutterSecureStorage();
       final base64Png = base64Encode(pngData);
       await secureStorage.write(key: 'profile_image', value: base64Png);
-      print('PNG image saved to Flutter Secure Storage');
     } catch (e) {
       print('Error saving PNG to Flutter Secure Storage: $e');
     }

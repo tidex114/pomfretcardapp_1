@@ -45,7 +45,6 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
   Future<void> _loadStudentId() async {
     try {
       studentId = await storage.read(key: 'barcode_data');
-      print(studentId);
       if (studentId != null) {
         await _loadInitialTransactions();
       } else {
@@ -72,7 +71,6 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
       final location = tz.getLocation('America/New_York');
       DateTime ctTime = tz.TZDateTime.now(location);
       currentTimestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(ctTime);
-      print(currentTimestamp);
     } catch (e) {
       setState(() {
         _loadError = true;
@@ -115,7 +113,6 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
 
         if (response.statusCode == 200) {
           final responseBody = json.decode(response.body);
-          print('Response Body: $responseBody'); // Debug print
 
           final encryptedData = responseBody['encrypted_data'];
           final encryptedKey = responseBody['encrypted_key'];
@@ -129,7 +126,6 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
             throw Exception('Decryption failed');
           }
           final decryptedJson = json.decode(utf8.decode(decryptedData));
-          print('Decrypted JSON: $decryptedJson'); // Debug print
 
           final transactionsData = decryptedJson['transactions'];
           final hasMore = decryptedJson['has_more'];
@@ -151,7 +147,6 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
             }
             this.hasMore = hasMore;
             this.latestTimestamp = DateTime.parse(latestTimestampStr);
-            print('Updated latestTimestamp: $latestTimestamp'); // Debug print
             _loadError = false;
           });
         } else if (response.statusCode == 404) {

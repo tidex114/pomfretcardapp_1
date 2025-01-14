@@ -9,6 +9,9 @@ import 'WelcomeBackPage.dart';
 import 'pin_entry_controller.dart';
 import 'package:pomfretcardapp/pages/login.dart';
 
+// Assuming you have access to the themeNotifier here
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+
 
 Future<void> logout(BuildContext context, FlutterSecureStorage secureStorage) async {
   await secureStorage.delete(key: 'session_token');
@@ -180,7 +183,7 @@ Future<void> verifyPin({
       PageRouteBuilder(
         // Increase this Duration to slow down the slide-in
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, animation, secondaryAnimation) => WelcomeBackPageWidget(),
+        pageBuilder: (context, animation, secondaryAnimation) => WelcomeBackPageWidget(themeNotifier: themeNotifier,),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;

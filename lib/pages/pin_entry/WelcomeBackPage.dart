@@ -1,34 +1,10 @@
 import 'package:flutter/material.dart';
-// Import your actual main page here
-import 'package:pomfretcardapp/pages/main_page/main_page.dart';
 import 'package:pomfretcardapp/theme.dart';
 
-/// A helper function to create a slide transition route.
-/// Adjust the [duration], [beginOffset], or [curve] as desired.
-Route createSlideRoute({
-  required Widget page,
-  Duration duration = const Duration(milliseconds: 1000),
-  Offset beginOffset = const Offset(1.0, 0.0), // slide in from the right
-  Curve curve = Curves.easeInOut, // or Curves.easeInOutQuint, etc.
-}) {
-  return PageRouteBuilder(
-    transitionDuration: duration,
-    pageBuilder: (context, animation, secondaryAnimation) => page,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final tween = Tween(begin: beginOffset, end: Offset.zero)
-          .chain(CurveTween(curve: curve));
-      final offsetAnimation = animation.drive(tween);
-
-      return SlideTransition(
-        position: offsetAnimation,
-        child: child,
-      );
-    },
-  );
-}
-
 class WelcomeBackPageWidget extends StatefulWidget {
-  const WelcomeBackPageWidget({Key? key}) : super(key: key);
+  final ValueNotifier<ThemeMode> themeNotifier;
+
+  const WelcomeBackPageWidget({Key? key, required this.themeNotifier}) : super(key: key);
 
   @override
   State<WelcomeBackPageWidget> createState() => _WelcomeBackPageWidgetState();
@@ -37,35 +13,28 @@ class WelcomeBackPageWidget extends StatefulWidget {
 class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
     with TickerProviderStateMixin {
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
-  // AnimationControllers
   late AnimationController _welcomeController;
   late AnimationController _nameController;
   late AnimationController _logoController;
 
-  // Slide animations
   late Animation<Offset> _welcomeSlideAnimation;
   late Animation<Offset> _nameSlideAnimation;
 
-  // **Fade** animations for text
   late Animation<double> _welcomeFadeAnimation;
   late Animation<double> _nameFadeAnimation;
 
-  // Scale animation for logo
   late Animation<double> _logoScaleAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // 1. Animation: "Welcome back," from the LEFT
     _welcomeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
-    // Slide in from the left
     _welcomeSlideAnimation = Tween<Offset>(
       begin: const Offset(-1.0, 0),
       end: Offset.zero,
@@ -76,7 +45,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
       ),
     );
 
-    // Fade in (0 -> 1)
     _welcomeFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -87,13 +55,11 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
       ),
     );
 
-    // 2. Animation: Name from the RIGHT
     _nameController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
 
-    // Slide in from the right
     _nameSlideAnimation = Tween<Offset>(
       begin: const Offset(1.0, 0),
       end: Offset.zero,
@@ -104,7 +70,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
       ),
     );
 
-    // Fade in (0 -> 1)
     _nameFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -115,14 +80,13 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
       ),
     );
 
-    // 3. Animation: Logo scale from (0,0) to (1,1)
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
     _logoScaleAnimation = Tween<double>(
-      begin: 0.0, // completely invisible (0x, 0x)
-      end: 1.0,   // full size (1x, 1x)
+      begin: 0.0,
+      end: 1.0,
     ).animate(
       CurvedAnimation(
         parent: _logoController,
@@ -130,25 +94,17 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
       ),
     );
 
-    // ---- 300 ms DELAY BEFORE starting animations ----
     Future.delayed(const Duration(milliseconds: 50), () {
       Future.wait([
         _welcomeController.forward(),
         _nameController.forward(),
         _logoController.forward(),
       ]).then((_) async {
-        // ---- 300 ms DELAY AFTER animations complete ----
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 600));
 
-        // Then navigate to '/mainPage'
-        Navigator.pushReplacement(
+        Navigator.pushReplacementNamed(
           context,
-          createSlideRoute(
-            page: MainPage(themeNotifier: themeNotifier),
-            duration: const Duration(milliseconds: 1000),
-            beginOffset: const Offset(1.0, 0.0),
-            curve: Curves.easeInOut,
-          ),
+          '/mainPage',
         );
       });
     });
@@ -176,7 +132,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
             child: Column(
               mainAxisSize: MainAxisSize.max,
               children: [
-                // Top row for "Welcome back," and "Ilia!"
                 Row(
                   mainAxisSize: MainAxisSize.max,
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -184,7 +139,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // Slide + Fade: "Welcome back,"
                         SlideTransition(
                           position: _welcomeSlideAnimation,
                           child: FadeTransition(
@@ -202,7 +156,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        // Slide + Fade: "Ilia!"
                         SlideTransition(
                           position: _nameSlideAnimation,
                           child: FadeTransition(
@@ -223,8 +176,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                     ),
                   ],
                 ),
-
-                // Spacer + Logo
                 Expanded(
                   child: Align(
                     alignment: const AlignmentDirectional(0, -1),
@@ -233,7 +184,6 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Scale in the logo
                         Opacity(
                           opacity: 0.1,
                           child: Align(

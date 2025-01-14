@@ -137,22 +137,18 @@ Future<Uint8List?> decryptTransactionData(String encryptedKeyBase64, String encr
 
       // Decode the encrypted transaction data from Base64
       final encryptedData = base64.decode(encryptedDataBase64);
-      print('Encrypted data decoded from Base64: ${encryptedData.length} bytes');
 
       // Ensure the encrypted data is large enough to contain an IV and ciphertext
       if (encryptedData.length > 16) {
         // Extract the Initialization Vector (IV)
         final iv = encryptedData.sublist(0, 16);
-        print('IV extracted: ${iv.length} bytes');
 
         // Extract the cipher text
         final cipherText = encryptedData.sublist(16);
-        print('CipherText extracted: ${cipherText.length} bytes');
 
         try {
           // Decrypt the cipher text using the AES key and IV
           final decryptedData = _decryptWithAES(aesKey, iv, cipherText);
-          print('Data successfully decrypted: ${decryptedData.length} bytes');
 
           // Return the decrypted data
           return decryptedData;
