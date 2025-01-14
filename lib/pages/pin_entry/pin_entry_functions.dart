@@ -173,11 +173,6 @@ Future<void> verifyPin({
     lockLevel = 0;
     attemptsLeft = 3;
     await secureStorage.delete(key: 'lock_level');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PIN Verified!')),
-    );
-    await Future.delayed(Duration(milliseconds: 300));
-    await Future.delayed(Duration(milliseconds: 1500));
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'WelcomeBackPage.dart';
 import 'pin_entry_controller.dart';
 import 'pin_entry_functions.dart';
 
@@ -112,7 +113,7 @@ class _PinEntryPageState extends State<PinEntryPage>
 
   void _onDigitTap(String digit) {
     onDigitTap(digit, _pinEntryController, () async {
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 100));
       _verifyPin();
     });
   }
@@ -149,7 +150,6 @@ class _PinEntryPageState extends State<PinEntryPage>
     }
   }
 
-
   Future<bool> _callVerifyPinAndReturnResult() async {
     bool pinValid = false;
     await verifyPin(
@@ -173,6 +173,32 @@ class _PinEntryPageState extends State<PinEntryPage>
         });
       },
     );
+
+    if (pinValid) {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 500),
+          pageBuilder: (context, animation, secondaryAnimation) => WelcomeBackPageWidget(themeNotifier: themeNotifier),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOut;
+
+            final tween = Tween(begin: begin, end: end).chain(
+              CurveTween(curve: curve),
+            );
+            final offsetAnimation = animation.drive(tween);
+
+            return SlideTransition(
+              position: offsetAnimation,
+              child: child,
+            );
+          },
+        ),
+      );
+    }
+
     return pinValid;
   }
 
