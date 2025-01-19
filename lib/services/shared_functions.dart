@@ -57,14 +57,19 @@ class SharedFunctions {
 
   Future<void> loadBarcodeData(Function updateBarcodeData) async {
     try {
+      final accessToken = await _secureStorage.read(key: 'access_token');
       final firstName = await _secureStorage.read(key: 'first_name');
       final lastName = await _secureStorage.read(key: 'last_name');
       final publicKey = await _secureStorage.read(key: 'public_key');
+      final uid = await _secureStorage.read(key: 'uid');
+
       if (firstName != null && lastName != null && publicKey != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_barcode'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken'},
           body: json.encode({
+            'uid': uid,
             'first_name': firstName,
             'last_name': lastName,
             'public_key': publicKey
