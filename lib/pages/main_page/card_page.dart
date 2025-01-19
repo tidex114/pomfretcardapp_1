@@ -74,7 +74,7 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
   }
 
   Future<void> _loadProfileAndBarcode() async {
-    await _sharedFunctions.loadBarcodeData(_updateBarcodeData);
+    await _sharedFunctions.loadBarcodeData(_updateBarcodeData, context);
     await _sharedFunctions.loadProfileImageData(_updateProfileImageData);
   }
 

@@ -9,6 +9,8 @@ import 'package:pomfretcardapp/pages/config.dart';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:pomfretcardapp/services/refresh_access_token.dart';
+import 'logout.dart';
 
 
 class SharedFunctions {
@@ -55,7 +57,7 @@ class SharedFunctions {
     await loadUserInfo();
   }
 
-  Future<void> loadBarcodeData(Function updateBarcodeData) async {
+  Future<void> loadBarcodeData(Function updateBarcodeData, BuildContext context) async {
     try {
       final accessToken = await _secureStorage.read(key: 'access_token');
       final firstName = await _secureStorage.read(key: 'first_name');
@@ -66,8 +68,10 @@ class SharedFunctions {
       if (firstName != null && lastName != null && publicKey != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_barcode'),
-          headers: {'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken'
+          },
           body: json.encode({
             'uid': uid,
             'first_name': firstName,
@@ -75,6 +79,7 @@ class SharedFunctions {
             'public_key': publicKey
           }),
         );
+
         if (response.statusCode == 200) {
           final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
           final decryptedJsonMap = await decryptJsonData(encryptedJsonBase64);
@@ -91,8 +96,19 @@ class SharedFunctions {
             print('Error: Name mismatch');
             updateBarcodeData("Name mismatch");
           }
+        } else if (response.statusCode == 401) {
+          print('Error: Unauthorized access.');
+          int reason = int.parse(json.decode(response.body)["reason_code"].toString());
+
+          if (reason == 5) { // Assuming reason code 1 indicates token expiration
+            await AuthService().refreshAccessToken(() async {
+              await loadBarcodeData(updateBarcodeData, context);
+            }, context);
+          } else {
+            updateBarcodeData("Unauthorized access");
+          }
         } else {
-          print('Error: Failed to fetch barcode with status code ${response.statusCode}');
+          print('Error: Failed to fetch barcode with status code ${response.statusCode}. Response: ${response.body}');
           updateBarcodeData("Unknown");
         }
       } else {
