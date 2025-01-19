@@ -84,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClient
           physics: AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              SizedBox(height: 55),
+              SizedBox(height: 150),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: TopProfileSection(

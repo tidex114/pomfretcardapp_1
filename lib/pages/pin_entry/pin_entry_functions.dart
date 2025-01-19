@@ -8,19 +8,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'WelcomeBackPage.dart';
 import 'pin_entry_controller.dart';
 import 'package:pomfretcardapp/pages/login.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:pomfretcardapp/pages/config.dart';
 
 // Assuming you have access to the themeNotifier here
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 
-Future<void> logout(BuildContext context, FlutterSecureStorage secureStorage) async {
-  await secureStorage.delete(key: 'session_token');
-  await secureStorage.delete(key: 'session_expires_at');
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => LoginPage()),
-  );
-}
+
 
 void onDigitTap(String digit, PinEntryController pinEntryController, Function verifyPin) {
   HapticFeedback.lightImpact();
@@ -145,66 +141,134 @@ Future<void> verifyPin({
   setState(() {
     isLoading = true;
   });
+  try {
+    // Make the API call to fetch the salt
+    String? uid = await secureStorage.read(key: 'uid');
+    final saltResponse = await http.post(
+      Uri.parse('${Config.backendUrl}/get_pin_salt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'uid': uid}),
+    ).timeout(Duration(seconds: 10));
 
-  String? storedPinHash = await secureStorage.read(key: 'pin_hash');
-  setState(() {
-    isLoading = false;
-  });
+    // Handle the response
+    if (saltResponse.statusCode == 200) {
+      final saltData = json.decode(saltResponse.body);
+      String salt = saltData['pin_salt'];
 
-  if (storedPinHash == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error verifying PIN. Please try again later.')),
-    );
-    return;
-  }
+      setState(() {
+        isLoading = false;
+      });
 
-  bool pinValid = BCrypt.checkpw(code, storedPinHash);
-  print(code);
-  print(storedPinHash);
+      // Use the salt (e.g., hash the PIN or display a success message)
+      print('Salt retrieved successfully: $salt');
 
-  setState(() {
-    isPinValid = pinValid;
-    if (isPinValid) {
-      animationController.forward();
-    }
-  });
+      String hashedPin = BCrypt.hashpw(code, salt);
 
-  if (pinValid) {
-    lockLevel = 0;
-    attemptsLeft = 3;
-    await secureStorage.delete(key: 'lock_level');
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        // Increase this Duration to slow down the slide-in
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, animation, secondaryAnimation) => WelcomeBackPageWidget(themeNotifier: themeNotifier,),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOut;
+      String? storedUid = await secureStorage.read(key: 'uid');
+      if (storedUid == null) {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User ID not found. Please log in again.')),
+        );
+        return;
+      }
 
-          final tween = Tween(begin: begin, end: end).chain(
-            CurveTween(curve: curve),
+      final response = await http.post(
+        Uri.parse('${Config.backendUrl}/validate_pin'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'uid': storedUid,
+          'hashed_pin': hashedPin,
+        }),
+      );
+
+      setState(() {
+        isLoading = false;
+      });
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['pin_valid'] == true) {
+          setState(() {
+            isPinValid = true;
+            lockLevel = 0;
+            attemptsLeft = 3;
+          });
+          await secureStorage.delete(key: 'lock_level');
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 500),
+              pageBuilder: (context, animation, secondaryAnimation) => WelcomeBackPageWidget(themeNotifier: themeNotifier),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                const begin = Offset(1.0, 0.0);
+                const end = Offset.zero;
+                const curve = Curves.easeInOut;
+
+                final tween = Tween(begin: begin, end: end).chain(
+                  CurveTween(curve: curve),
+                );
+                final offsetAnimation = animation.drive(tween);
+
+                return SlideTransition(
+                  position: offsetAnimation,
+                  child: child,
+                );
+              },
+            ),
           );
-          final offsetAnimation = animation.drive(tween);
-
-          return SlideTransition(
-            position: offsetAnimation,
-            child: child,
-          );
-        },
-      ),
-    );
-  } else {
-    attemptsLeft--;
-    pinController.clear();
-    if (attemptsLeft <= 0) {
-      lockUser();
-    } else {
+        } else {
+          print('Incorrect PIN');
+          setState(() {
+            isPinValid = false;
+            attemptsLeft--;
+          });
+          pinController.clear();
+          if (attemptsLeft <= 0) {
+            lockUser();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Incorrect PIN, please try again. Attempts left: $attemptsLeft')),
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error verifying PIN. Please try again later.')),
+        );
+      }
+    } else if (saltResponse.statusCode == 404) {
+      setState(() {
+        isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Incorrect PIN, please try again. Attempts left: $attemptsLeft')),
+        SnackBar(content: Text('User not found or PIN salt not available.')),
+      );
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      final responseData = json.decode(saltResponse.body);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(responseData['message'] ?? 'An error occurred.')),
       );
     }
+  } on TimeoutException {
+    setState(() {
+      isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('The request timed out. Please try again later.')),
+    );
+  } catch (e) {
+    setState(() {
+      isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An unexpected error occurred: $e')),
+    );
   }
 }

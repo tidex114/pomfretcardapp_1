@@ -37,6 +37,7 @@ dependencies:
   shimmer: ^2.0.0
   grouped_list: ^4.0.0
   flutter_animate: ^1.0.0
+  device_info_plus: ^11.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

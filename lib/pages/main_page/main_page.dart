@@ -118,7 +118,7 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                 ],
               ),
               child: Padding(
-                padding: EdgeInsets.only(left: 16.0, bottom: 12.0, top: 40.0), // Add top padding here
+                padding: EdgeInsets.only(left: 16.0, bottom: 12.0, top: 80.0), // Add top padding here
                 child: Align(
                   alignment: Alignment.bottomLeft,
                   child: Row(

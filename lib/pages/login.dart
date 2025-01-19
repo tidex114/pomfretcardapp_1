@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -9,7 +11,8 @@ import 'dart:async';
 import 'package:pomfretcardapp/pages/config.dart';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:pomfretcardapp/services/rsa_key_pair.dart';
-
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:pomfretcardapp/utils/getDeviceModel.dart';
 import 'dart:math';
 
 
@@ -36,6 +39,7 @@ class _LoginPageState extends State<LoginPage> {
     _passwordController.dispose();
     super.dispose();
   }
+
 
   Future<void> generateAndStorePrivateKey() async {
     try {
@@ -127,11 +131,10 @@ class _LoginPageState extends State<LoginPage> {
           body: json.encode({
             'email': email,
             'hashed_password': hashedPassword,
-            'device_info': 'FlutterApp',
-            'session_token': await _secureStorage.read(key: 'session_token')
+            'device_info': await getDeviceModel(),
           }),
         ).timeout(Duration(seconds: 10));
-
+        print(getDeviceModel());
         setState(() {
           _isLoading = false;
         });
@@ -153,20 +156,15 @@ class _LoginPageState extends State<LoginPage> {
         } else if (response.statusCode == 200) {
           final responseData = json.decode(response.body);
 
-          if (responseData['session_token'] != null) {
-            String sessionToken = responseData['session_token'];
-            DateTime expiresAt = DateTime.now().add(Duration(days: 7));
+          if (responseData['access_token'] != null && responseData['uid'] != null && responseData["refresh_token"] != null) {
 
-            await _secureStorage.write(key: 'session_token', value: sessionToken);
-            await _secureStorage.write(key: 'session_expires_at', value: expiresAt.toIso8601String());
+            await _secureStorage.write(key: "uid", value: responseData['uid'].toString());
+            await _secureStorage.write(key: 'access_token', value: responseData['access_token']);
+            await _secureStorage.write(key: 'refresh_token', value: responseData['refresh_token']);
             await _secureStorage.write(key: 'user_email', value: email);
             await _secureStorage.write(key: 'first_name', value: responseData['first_name']);
             await _secureStorage.write(key: 'last_name', value: responseData['last_name']);
             await _secureStorage.write(key: 'graduation_year', value: responseData['graduation_year'].toString());
-            await _secureStorage.write(key: 'barcode', value: responseData['barcode']);
-            await _secureStorage.write(key: 'pin_hash', value: responseData['pin_hash']);
-            await _secureStorage.write(key: 'pin_salt', value: responseData['pin_salt']);
-
             // Generate and store private key only after successful login
             await generateAndStorePrivateKey();
 

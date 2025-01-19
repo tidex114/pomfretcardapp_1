@@ -149,6 +149,7 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
             physics: AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
+                SizedBox(height: 50),
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -367,7 +368,7 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
                                                         color: Colors.white, // Set background color to white
                                                         child: BarcodeWidget(
                                                           barcode: Barcode.code39(),
-                                                          data: _barcodeData!,
+                                                          data: "00000",//_barcodeData!
                                                           drawText: false,
                                                           color: Colors.black,
                                                           width: adjustedCardWidth * (32 / 54),
@@ -400,7 +401,7 @@ class _CardPageState extends State<CardPage> with AutomaticKeepAliveClientMixin<
                                         },
                                         child: BarcodeWidget(
                                           barcode: Barcode.code39(),
-                                          data: _barcodeData!,
+                                          data: "00000",//_barcodeData!,
                                           drawText: false,
                                           color: Colors.black,
                                           width: adjustedCardWidth * (32 / 54),

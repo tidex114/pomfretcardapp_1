@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pomfretcardapp/pages/login.dart';
+import 'package:pomfretcardapp/services/logout.dart';
 
 class TopProfileSection extends StatelessWidget {
   final String? firstName;
@@ -81,11 +82,7 @@ class TopProfileSection extends StatelessWidget {
           ),
           IconButton(
             onPressed: () async {
-              await _secureStorage.deleteAll();
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => LoginPage()),
-              );
+              await performLogout(context, _secureStorage);
             },
             icon: Icon(Icons.logout, color: theme.colorScheme.primary, size: 28),
           ),
