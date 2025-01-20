@@ -194,21 +194,29 @@ class SharedFunctions {
     }
   }
 
-  Future<void> loadProfileImageData(Function updateProfileImageData) async {
+  Future<void> loadProfileImageData(Function updateProfileImageData, BuildContext context) async {
     try {
+      final accessToken = await _secureStorage.read(key: 'access_token');
       final firstName = await _secureStorage.read(key: 'first_name');
       final lastName = await _secureStorage.read(key: 'last_name');
       final publicKey = await _secureStorage.read(key: 'public_key');
-      if (firstName != null && lastName != null && publicKey != null) {
+      final uid = await _secureStorage.read(key: 'uid');
+
+      if (firstName != null && lastName != null && publicKey != null && uid != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_profile_image'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken'
+          },
           body: json.encode({
+            'uid': uid,
             'first_name': firstName,
             'last_name': lastName,
             'public_key': publicKey
           }),
         );
+
         if (response.statusCode == 200) {
           final encryptedKeyBase64 = json.decode(response.body)['encrypted_key'];
           final encryptedPhotoBase64 = json.decode(response.body)['encrypted_photo'];
@@ -221,12 +229,23 @@ class SharedFunctions {
             print('Error: Decrypted image data is null or invalid');
             updateProfileImageData(null);
           }
+        } else if (response.statusCode == 401) {
+          print('Error: Unauthorized access.');
+          int reason = int.parse(json.decode(response.body)["reason_code"].toString());
+
+          if (reason == 5) {
+            await AuthService().refreshAccessToken(() async {
+              await loadProfileImageData(updateProfileImageData, context);
+            }, context);
+          } else {
+            updateProfileImageData(null);
+          }
         } else {
           print('Error: Failed to fetch profile picture with status code ${response.statusCode}');
           updateProfileImageData(null);
         }
       } else {
-        print('Error: User first name or last name not found in secure storage');
+        print('Error: User first name, last name, public key, or uid not found in secure storage');
         updateProfileImageData(null);
       }
     } catch (e) {

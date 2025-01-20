@@ -8,6 +8,7 @@ import 'package:pomfretcardapp/pages/config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pomfretcardapp/services/decryption_service.dart';
 import 'dart:typed_data';
+import 'package:pomfretcardapp/services/refresh_access_token.dart';
 
 class TransactionPage extends StatefulWidget {
   final ValueNotifier<ThemeMode> themeNotifier;
@@ -95,19 +96,23 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
           _isLoadingMore = true;
         });
       }
+      final accessToken = await storage.read(key: 'access_token');
       final publicKey = await storage.read(key: 'public_key');
       final firstName = await storage.read(key: 'first_name');
       final lastName = await storage.read(key: 'last_name');
-      if (firstName != null && lastName != null && publicKey != null) {
+      final uid = await storage.read(key: 'uid');
+
+      if (firstName != null && lastName != null && publicKey != null && uid != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_transactions'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'},
           body: json.encode({
             'student_id': studentId,
             'timestamp': timestamp.toIso8601String(),
             'public_key': publicKey,
             'first_name': firstName,
             'last_name': lastName,
+            'uid': uid,
           }),
         );
 
@@ -149,11 +154,20 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
             this.latestTimestamp = DateTime.parse(latestTimestampStr);
             _loadError = false;
           });
-        } else if (response.statusCode == 404) {
-          setState(() {
-            _loadError = true;
-            _errorMessage = 'No transactions yet.';
-          });
+        } else if (response.statusCode == 401) {
+          print('Error: Unauthorized access.');
+          int reason = int.parse(json.decode(response.body)["reason_code"].toString());
+
+          if (reason == 5) {
+            await AuthService().refreshAccessToken(() async {
+              await _loadTransactions(timestamp, loadMore: loadMore);
+            }, context);
+          } else {
+            setState(() {
+              _loadError = true;
+              _errorMessage = 'Unauthorized access';
+            });
+          }
         } else {
           setState(() {
             _loadError = true;
@@ -161,10 +175,10 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
           });
         }
       } else {
-        print('Error: User first name, last name, or public key not found in secure storage');
+        print('Error: User first name, last name, public key, or uid not found in secure storage');
         setState(() {
           _loadError = true;
-          _errorMessage = 'User first name, last name, or public key not found in secure storage';
+          _errorMessage = 'User first name, last name, public key, or uid not found in secure storage';
         });
       }
     } catch (e) {
