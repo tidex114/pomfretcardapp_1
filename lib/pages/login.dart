@@ -1,21 +1,20 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'create_pin.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:async';
-import 'package:pomfretcardapp/pages/config.dart';
-import 'package:bcrypt/bcrypt.dart';
-import 'package:pomfretcardapp/services/rsa_key_pair.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:bcrypt/bcrypt.dart';
+
+import 'create_pin.dart';
+import 'package:pomfretcardapp/pages/config.dart';
+import 'package:pomfretcardapp/services/rsa_key_pair.dart';
 import 'package:pomfretcardapp/utils/getDeviceModel.dart';
-import 'dart:math';
-
-
 
 class LoginPage extends StatefulWidget {
   @override
@@ -40,22 +39,17 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-
   Future<void> generateAndStorePrivateKey() async {
     try {
-      // Generate the RSA key pair using the function from this file
       final keyPair = generateRSAKeyPair();
       final publicKey = keyPair.publicKey;
       final privateKey = keyPair.privateKey;
 
-      // Store the keys securely
       final secureStorage = FlutterSecureStorage();
 
-      // Convert the keys to PEM format strings using the encoding functions
       final publicPem = encodePublicKeyToPem(publicKey);
       final privatePem = encodePrivateKeyToPem(privateKey);
 
-      // Send the public key to the backend to store
       final userEmail = await secureStorage.read(key: 'user_email');
       if (userEmail != null) {
         await http.post(
@@ -71,9 +65,6 @@ class _LoginPageState extends State<LoginPage> {
       throw Exception('Key generation failed');
     }
   }
-
-
-
 
   void _login() async {
     setState(() {
@@ -94,7 +85,6 @@ class _LoginPageState extends State<LoginPage> {
       final String password = _passwordController.text.trim();
 
       try {
-        // Request the salt from the backend
         final saltResponse = await http.post(
           Uri.parse('${Config.backendUrl}/get_salt'),
           headers: {'Content-Type': 'application/json'},
@@ -122,7 +112,7 @@ class _LoginPageState extends State<LoginPage> {
           );
           return;
         }
-        // Hash the password using the retrieved salt
+
         final String hashedPassword = BCrypt.hashpw(password, salt);
 
         final response = await http.post(
@@ -165,7 +155,6 @@ class _LoginPageState extends State<LoginPage> {
             await _secureStorage.write(key: 'first_name', value: responseData['first_name']);
             await _secureStorage.write(key: 'last_name', value: responseData['last_name']);
             await _secureStorage.write(key: 'graduation_year', value: responseData['graduation_year'].toString());
-            // Generate and store private key only after successful login
             await generateAndStorePrivateKey();
 
             Navigator.pushReplacementNamed(context, '/pinEntry');
@@ -198,9 +187,9 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -217,6 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                   SvgPicture.asset(
                     'assets/images/pomcard_icon.svg',
                     height: 60,
+                    color: theme.colorScheme.onSurface,
                   ),
                   SizedBox(width: 8),
                   Text.rich(
@@ -225,7 +215,7 @@ class _LoginPageState extends State<LoginPage> {
                         TextSpan(
                           text: 'Pom',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: theme.colorScheme.onSurface,
                             fontSize: 50,
                             fontFamily: 'Aeonik',
                             fontWeight: FontWeight.w700,
@@ -236,7 +226,7 @@ class _LoginPageState extends State<LoginPage> {
                         TextSpan(
                           text: 'card',
                           style: TextStyle(
-                            color: Color(0xFFED4747),
+                            color: theme.colorScheme.primary,
                             fontSize: 50,
                             fontStyle: FontStyle.italic,
                             fontFamily: 'Aeonik',
@@ -256,11 +246,13 @@ class _LoginPageState extends State<LoginPage> {
                   constraints: BoxConstraints(maxWidth: 450),
                   padding: EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.5),
+                        color: theme.brightness == Brightness.dark
+                            ? theme.shadowColor.withOpacity(0.5)
+                            : Colors.grey.withOpacity(0.5),
                         spreadRadius: 0,
                         blurRadius: 7,
                         offset: Offset(0, 3),
@@ -277,17 +269,18 @@ class _LoginPageState extends State<LoginPage> {
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'Aeonik',
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       SizedBox(height: 20),
                       TextField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.email, color: Colors.grey),
+                          prefixIcon: Icon(Icons.email, color: theme.colorScheme.onSurface.withOpacity(0.5)),
                           hintText: '@pomfret.org email',
                           filled: true,
-                          fillColor: Color(0xFFE1DAE2),
-                          hintStyle: TextStyle(color: Color(0xFF57636C), fontFamily: 'Aeonik'),
+                          fillColor: theme.brightness == Brightness.dark ? Color(0xFF2F2F2F) : Color(0xFFE0E0E0),
+                          hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontFamily: 'Aeonik'),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide.none,
@@ -304,11 +297,11 @@ class _LoginPageState extends State<LoginPage> {
                         controller: _passwordController,
                         obscureText: _isPasswordHidden,
                         decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                          prefixIcon: Icon(Icons.lock, color: theme.colorScheme.onSurface.withOpacity(0.5)),
                           hintText: 'Password',
                           filled: true,
-                          fillColor: Color(0xFFE1DAE2),
-                          hintStyle: TextStyle(color: Color(0xFF57636C), fontFamily: 'Aeonik'),
+                          fillColor: theme.brightness == Brightness.dark ? Color(0xFF2F2F2F) : Color(0xFFE0E0E0),
+                          hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontFamily: 'Aeonik'),
                           suffixIcon: IconButton(
                             icon: Icon(_isPasswordHidden ? Icons.visibility : Icons.visibility_off),
                             onPressed: () {
@@ -338,7 +331,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: Text(
                             'Forgot Password?',
                             style: TextStyle(
-                                color: Color(0xFF779FF3),
+                                color: theme.colorScheme.primary,
                                 fontSize: 16,
                                 fontFamily: 'Aeonik',
                                 fontWeight: FontWeight.w500
@@ -351,8 +344,8 @@ class _LoginPageState extends State<LoginPage> {
                           ? Center(child: CircularProgressIndicator())
                           : ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
                           minimumSize: Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
@@ -369,17 +362,16 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-
               SizedBox(height: 20),
               Center(
                 child: RichText(
                   text: TextSpan(
                     text: 'Don’t have an account? ',
-                    style: TextStyle(color: Colors.grey, fontSize: 16, fontFamily: 'Aeonik'),
+                    style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 16, fontFamily: 'Aeonik'),
                     children: [
                       TextSpan(
                         text: 'Create one here',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'Aeonik'),
+                        style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Aeonik'),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             Navigator.pushNamed(context, '/register');

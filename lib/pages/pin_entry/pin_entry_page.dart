@@ -236,6 +236,7 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -243,7 +244,7 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
       },
       child: Scaffold(
         key: scaffoldKey,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
           top: true,
           child: Align(
@@ -260,9 +261,11 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.asset(
-                      'assets/images/pomcard_icon_light.png',
-                      width: 133,
-                      height: 133,
+                      theme.brightness == Brightness.dark
+                          ? 'assets/images/pomcard_icon_dark.png'
+                          : 'assets/images/pomcard_icon_light.png',
+                      width: 110,
+                      height: 110,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -277,32 +280,28 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
                       maxHeight: 430,
                     ),
                     decoration: BoxDecoration(
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
-                          blurRadius: 4,
-                          color: Color(0x33000000),
-                          offset: Offset(0, 2),
+                          blurRadius: 10,
+                          color: theme.shadowColor.withOpacity(0.15),
+                          offset: const Offset(0, 5),
                         ),
                       ],
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFECECEC), Colors.white],
-                        stops: [0, 0.05],
-                        begin: AlignmentDirectional(0, -1),
-                        end: AlignmentDirectional(0, 1),
-                      ),
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(25),
                     ),
                     child: Column(
                       children: [
                         // "Security PIN" label
                         const SizedBox(height: 30),
-                        const Text(
+                        Text(
                           'Security PIN',
                           style: TextStyle(
                             fontFamily: 'Aeonik',
                             fontSize: 26,
                             letterSpacing: 0.0,
                             fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         const Spacer(),
@@ -321,11 +320,12 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
                                   color: isFilled
                                       ? (_isWrongPin
                                       ? Colors.red
-                                      : (_isPinValid ? Colors.green : Colors.black))
-                                      : const Color(0xFFE0E3E7),
+                                      : (_isPinValid ? Colors.green : theme.colorScheme.onSurface))
+                                      : theme.brightness == Brightness.dark ? Color(0xFFFFFFF) : const Color(
+                                      0xFFBBBABA),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: const Color(0xFFE0E3E7),
+                                    color: theme.colorScheme.surfaceVariant,
                                   ),
                                 ),
                               );
@@ -377,10 +377,10 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
                                 onTap: _onDeleteTap,
                                 child: SizedBox(
                                   height: 60,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.backspace,
                                     size: 24,
-                                    color: Colors.black,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                                 ),
                               ),
@@ -403,18 +403,18 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Divider(
+                        Divider(
                           thickness: 2,
-                          color: Color(0xFFE0E3E7),
+                          color: theme.colorScheme.onSurface.withOpacity(0.4),
                         ),
                         const SizedBox(height: 10),
                         TextButton(
                           onPressed: _logout,
-                          child: const Text(
+                          child: Text(
                             'Logout',
                             style: TextStyle(
                               fontFamily: 'Aeonik',
-                              color: Color(0xFFF62828),
+                              color: theme.colorScheme.primary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -433,6 +433,7 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
   }
 
   Widget _digitButton(String digit) {
+    final theme = Theme.of(context);
     return Expanded(
       child: InkWell(
         splashColor: Colors.transparent,
@@ -445,11 +446,12 @@ class _PinEntryPageState extends State<PinEntryPage> with TickerProviderStateMix
           child: Center(
             child: Text(
               digit,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Aeonik',
                 fontSize: 24,
                 letterSpacing: 0.0,
                 fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),

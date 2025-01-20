@@ -82,9 +82,9 @@ class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClient
         onRefresh: _refreshProfilePage,
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(top: kToolbarHeight),
           child: Column(
             children: [
-              SizedBox(height: 150),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: TopProfileSection(

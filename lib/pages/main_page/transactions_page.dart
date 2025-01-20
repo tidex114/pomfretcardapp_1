@@ -340,7 +340,7 @@ class _TransactionPageState extends State<TransactionPage> with AutomaticKeepAli
                               ),
                             ],
                           ),
-                          margin: EdgeInsets.symmetric(vertical: 4.0),
+                          margin: EdgeInsets.symmetric(vertical: 5.0),
                           child: ExpansionTile(
                             key: PageStorageKey<int>(index),
                             onExpansionChanged: (bool expanded) {

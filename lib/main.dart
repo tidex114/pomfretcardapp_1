@@ -11,9 +11,16 @@ import 'pages/pin_entry/pin_entry_page.dart';
 import 'package:pomfretcardapp/pages/config.dart';
 import 'theme.dart'; // Import the theme file
 import 'pages/main_page/profile_page/settings_section.dart'; // Import the settings page
+import 'package:provider/provider.dart';
+import 'ThemeProvider.dart'; // Import the ThemeProvider class
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {

@@ -120,11 +120,15 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final logoAsset = isDarkMode ? 'assets/images/pomcard_icon_dark.png' : 'assets/images/pomcard_icon_light.png';
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         key: scaffoldKey,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
           top: true,
           child: Padding(
@@ -143,12 +147,12 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                           position: _welcomeSlideAnimation,
                           child: FadeTransition(
                             opacity: _welcomeFadeAnimation,
-                            child: const Text(
+                            child: Text(
                               'Welcome back,',
                               textAlign: TextAlign.end,
                               style: TextStyle(
                                 fontFamily: 'Aeonik',
-                                color: Colors.black,
+                                color: theme.colorScheme.onSurface,
                                 fontSize: 31,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -160,12 +164,12 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                           position: _nameSlideAnimation,
                           child: FadeTransition(
                             opacity: _nameFadeAnimation,
-                            child: const Text(
+                            child: Text(
                               'Ilia!',
                               textAlign: TextAlign.end,
                               style: TextStyle(
                                 fontFamily: 'Aeonik',
-                                color: Colors.redAccent,
+                                color: theme.colorScheme.primary,
                                 fontSize: 37,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -193,7 +197,7 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 100),
                                 child: Image.asset(
-                                  'assets/images/pomcard_icon_light.png',
+                                  logoAsset,
                                   width: 200,
                                   height: 200,
                                   fit: BoxFit.contain,
