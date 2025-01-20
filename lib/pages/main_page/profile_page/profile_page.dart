@@ -52,7 +52,7 @@ class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClient
       setState(() {
         _balanceData = balance;
       });
-    });
+    }, context);
   }
 
   Future<void> _refreshProfilePage() async {

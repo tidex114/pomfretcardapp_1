@@ -29,7 +29,7 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
         _balanceData = balance;
         _isLoading = false;
       });
-    });
+    }, context);
   }
 
   Future<void> _toggleBalanceVisibility() async {

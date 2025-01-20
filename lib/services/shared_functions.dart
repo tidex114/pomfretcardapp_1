@@ -100,7 +100,7 @@ class SharedFunctions {
           print('Error: Unauthorized access.');
           int reason = int.parse(json.decode(response.body)["reason_code"].toString());
 
-          if (reason == 5) { // Assuming reason code 1 indicates token expiration
+          if (reason == 5) { // Assuming reason code 5 indicates token expiration
             await AuthService().refreshAccessToken(() async {
               await loadBarcodeData(updateBarcodeData, context);
             }, context);
@@ -120,16 +120,23 @@ class SharedFunctions {
       updateBarcodeData("Unknown");
     }
   }
-  Future<void> loadBalanceData(Function updateBalanceData) async {
+  Future<void> loadBalanceData(Function updateBalanceData, BuildContext context) async {
     try {
+      final accessToken = await _secureStorage.read(key: 'access_token');
       final firstName = await _secureStorage.read(key: 'first_name');
       final lastName = await _secureStorage.read(key: 'last_name');
       final publicKey = await _secureStorage.read(key: 'public_key');
-      if (firstName != null && lastName != null && publicKey != null) {
+      final uid = await _secureStorage.read(key: 'uid');
+
+      if (firstName != null && lastName != null && publicKey != null && uid != null) {
         final response = await http.post(
           Uri.parse('${Config.schoolBackendUrl}/get_balance'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken'
+          },
           body: json.encode({
+            'uid': uid,
             'first_name': firstName,
             'last_name': lastName,
             'public_key': publicKey
@@ -152,12 +159,23 @@ class SharedFunctions {
             print('Error: Name mismatch');
             updateBalanceData('Name mismatch');
           }
+        } else if (response.statusCode == 401) {
+          print('Error: Unauthorized access.');
+          int reason = int.parse(json.decode(response.body)["reason_code"].toString());
+
+          if (reason == 5) {
+            await AuthService().refreshAccessToken(() async {
+              await loadBalanceData(updateBalanceData, context);
+            }, context);
+          } else {
+            updateBalanceData('\$ • • •');
+          }
         } else {
           print('Error: Failed to fetch balance with status code ${response.statusCode}');
           updateBalanceData('\$ • • •');
         }
       } else {
-        print('Error: User first name, last name, or public key not found in secure storage');
+        print('Error: User first name, last name, public key, or uid not found in secure storage');
         updateBalanceData('\$ • • •');
       }
     } catch (e) {
