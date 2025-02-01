@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:pomfretcardapp/services/shared_functions.dart';
+import '../../../services/showMessage.dart';
 
 class CardBalanceSection extends StatefulWidget {
   @override
@@ -14,6 +15,8 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
   String _balanceData = '\$ • • •';
   bool _isBalanceVisible = false;
   bool _isLoading = true;
+  bool _isBalanceUpdated = false;
+  bool _isError = false;
 
   @override
   void initState() {
@@ -22,14 +25,32 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
   }
 
   Future<void> _loadBalance() async {
-    await _sharedFunctions.loadBalanceData((balance) async {
-      print('Balance fetched: $balance');
-      await _secureStorage.write(key: 'balance', value: balance);
+    try {
+      await _sharedFunctions.loadBalanceData((balance) async {
+        print('Balance fetched: $balance');
+        await _secureStorage.write(key: 'balance', value: balance);
+        setState(() {
+          if (balance == 'Error') {
+            _balanceData = '\$ • • •';
+            _isError = true;
+          } else {
+            _balanceData = '\$ ' + balance;
+            _isError = false;
+          }
+          _isLoading = false;
+          _isBalanceUpdated = true;
+        });
+      }, context);
+    } catch (e) {
+      print('Error loading balance: $e');
       setState(() {
-        _balanceData = balance;
+        _balanceData = '\$ • • •';
         _isLoading = false;
+        _isBalanceUpdated = false;
+        _isError = true;
       });
-    }, context);
+      showMessage(context, 'Error loading balance: $e', 'error');
+    }
   }
 
   Future<void> _toggleBalanceVisibility() async {
@@ -42,7 +63,7 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
       String? storedBalance = await _secureStorage.read(key: 'balance');
       setState(() {
         _isBalanceVisible = true;
-        _balanceData = storedBalance ?? _balanceData;
+        _balanceData = '\$ $storedBalance' ?? _balanceData;
       });
     }
   }
@@ -136,19 +157,12 @@ class _CardBalanceSectionState extends State<CardBalanceSection> {
                             _loadBalance();
                           },
                         ),
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(9),
-                          color: theme.colorScheme.primary,
-                        ),
-                        child: Icon(
-                          Icons.add,
-                          color: theme.colorScheme.onPrimary,
+                      if (!_isLoading)
+                        Icon(
+                          _isError ? Icons.error : Icons.check,
+                          color: _isError ? Colors.red : Colors.green,
                           size: 20,
                         ),
-                      ),
                     ],
                   ),
                 ],

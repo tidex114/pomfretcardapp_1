@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pomfretcardapp/theme.dart';
 
 class WelcomeBackPageWidget extends StatefulWidget {
@@ -13,6 +14,7 @@ class WelcomeBackPageWidget extends StatefulWidget {
 class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
     with TickerProviderStateMixin {
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   late AnimationController _welcomeController;
   late AnimationController _nameController;
@@ -25,6 +27,8 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
   late Animation<double> _nameFadeAnimation;
 
   late Animation<double> _logoScaleAnimation;
+
+  String _firstName = '';
 
   @override
   void initState() {
@@ -94,6 +98,8 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
       ),
     );
 
+    _loadFirstName();
+
     Future.delayed(const Duration(milliseconds: 50), () {
       Future.wait([
         _welcomeController.forward(),
@@ -107,6 +113,13 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
           '/mainPage',
         );
       });
+    });
+  }
+
+  Future<void> _loadFirstName() async {
+    final firstName = await _secureStorage.read(key: 'first_name');
+    setState(() {
+      _firstName = firstName ?? 'User';
     });
   }
 
@@ -165,7 +178,7 @@ class _WelcomeBackPageWidgetState extends State<WelcomeBackPageWidget>
                           child: FadeTransition(
                             opacity: _nameFadeAnimation,
                             child: Text(
-                              'Ilia!',
+                              '$_firstName!',
                               textAlign: TextAlign.end,
                               style: TextStyle(
                                 fontFamily: 'Aeonik',

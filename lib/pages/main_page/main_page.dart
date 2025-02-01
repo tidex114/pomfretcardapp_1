@@ -284,7 +284,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Aeonik',
               fontWeight: FontWeight.bold,
-              fontSize: isSelected ? 14 : 12, // Dynamic font size
+              fontSize: isSelected ? 16 : 14, // Dynamic font size
               color: isSelected ? selectedItemColor : unselectedItemColor,
             ),
           ),

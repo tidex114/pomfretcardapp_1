@@ -13,6 +13,7 @@ import 'theme.dart'; // Import the theme file
 import 'pages/main_page/profile_page/settings_section.dart'; // Import the settings page
 import 'package:provider/provider.dart';
 import 'ThemeProvider.dart'; // Import the ThemeProvider class
+import 'services/refresh_access_token.dart'; // Import the AuthService class
 
 void main() {
   runApp(
@@ -31,54 +32,57 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+  final AuthService _authService = AuthService();
 
-  Future<bool> _isUserLoggedIn() async {
-    String? sessionToken = await _secureStorage.read(key: 'session_token');
-    print('Debug: Session token found: $sessionToken');
-    String? expiresAtStr = await _secureStorage.read(key: 'session_expires_at');
-    String? userEmail = await _secureStorage.read(key: 'user_email');
-
-    if (sessionToken != null && expiresAtStr != null && userEmail != null) {
-      DateTime expiresAt = DateTime.parse(expiresAtStr);
-      if (expiresAt.isAfter(DateTime.now())) {
-        // Call the /validate_session route
-        bool isValidSession = await _validateSession(sessionToken, userEmail);
-        if (!isValidSession) {
-          await _clearStorage();
-        }
-        return isValidSession;
-      }
-    }
-    await _clearStorage();
-    return false;
-  }
-
-  Future<void> _clearStorage() async {
-    await _secureStorage.delete(key: 'session_token');
-    await _secureStorage.delete(key: 'session_expires_at');
-    await _secureStorage.delete(key: 'user_email');
-  }
-
-  Future<bool> _validateSession(String sessionToken, String userEmail) async {
+  Future<bool> _validateSession() async {
     try {
+      final fullName = '${await _secureStorage.read(key: 'first_name')} ${await _secureStorage.read(key: 'last_name')}';
+      final uid = await _secureStorage.read(key: 'uid');
+      final token = await _secureStorage.read(key: 'access_token');
+
+      if (token == null) {
+        print('Error: Access token is null');
+        return false;
+      }
+
       final response = await http.post(
-        Uri.parse('${Config.backendUrl}/validate_session'),
+        Uri.parse('${Config.backendUrl}/validate_jwt'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'session_token': sessionToken, 'email': userEmail}),
+        body: json.encode({
+          'full_name': fullName,
+          'uid': uid,
+          'token': token,
+        }),
       );
 
       if (response.statusCode == 200) {
-        // Session is valid
         return true;
+      } else if (response.statusCode == 401) {
+        final responseBody = json.decode(response.body);
+        if (responseBody['reason_code'] == 5) {
+          print('Access token expired. Attempting refresh...');
+          await _authService.refreshAccessToken(() async => null, context);
+          return await _validateSession(); // Retry session validation after token refresh
+        } else {
+          print('Error: Unauthorized access. Reason: ${responseBody['reason']}');
+        }
       } else {
-        // Session is invalid or expired
-        return false;
+        print('Error: Unexpected status code ${response.statusCode}');
+        print('Response body: ${response.body}');
       }
+      return false;
+    } on http.ClientException catch (e) {
+      print('Network error: $e');
+      return false;
+    } on FormatException catch (e) {
+      print('Error decoding response: $e');
+      return false;
     } catch (e) {
-      print('Error validating session: $e');
+      print('Unexpected error: $e');
       return false;
     }
   }
+
 
   void _toggleTheme() {
     themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
@@ -94,35 +98,16 @@ class _MyAppState extends State<MyApp> {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: currentMode,
-          themeAnimationDuration: Duration.zero, // Disable theme animation
+          themeAnimationDuration: Duration.zero,
           home: FutureBuilder<bool>(
-            future: _isUserLoggedIn(),
+            future: _validateSession(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
+                return _buildLoadingScreen();
               } else if (snapshot.hasData && snapshot.data == true) {
-                return FutureBuilder<String?> (
-                  future: _secureStorage.read(key: 'user_email'),
-                  builder: (context, emailSnapshot) {
-                    if (emailSnapshot.connectionState == ConnectionState.waiting) {
-                      return Scaffold(
-                        body: Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                    } else if (emailSnapshot.hasData && emailSnapshot.data != null) {
-                      return PinEntryPage();
-                    } else {
-                      return LoginPage();
-                    }
-                  },
-                );
+                return _handleValidatedSession(context);
               } else {
-                return LoginPage();
+                return _handleInvalidSession(context);
               }
             },
           ),
@@ -135,9 +120,77 @@ class _MyAppState extends State<MyApp> {
               email: ModalRoute.of(context)?.settings.arguments as String? ?? '',
               password: '',
             ),
-            '/login': (context) => LoginPage(), // No email parameter needed
-            '/settings': (context) => SettingsSection(themeNotifier: themeNotifier), // Add settings route
+            '/login': (context) => LoginPage(),
+            '/settings': (context) => SettingsSection(themeNotifier: themeNotifier),
           },
+        );
+      },
+    );
+  }
+
+  // Handles navigation when the session is validated
+  Widget _handleValidatedSession(BuildContext context) {
+    Future.microtask(() async {
+      final email = await _secureStorage.read(key: 'user_email');
+      if (email != null) {
+        Navigator.pushReplacement(
+          context,
+          _buildAnimatedRoute(PinEntryPage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          _buildAnimatedRoute(LoginPage()),
+        );
+      }
+    });
+    return _buildLoadingScreen(); // Placeholder while navigating
+  }
+
+  // Handles navigation when the session is invalid
+  Widget _handleInvalidSession(BuildContext context) {
+    Future.microtask(() {
+      Navigator.pushReplacement(
+        context,
+        _buildAnimatedRoute(LoginPage()),
+      );
+    });
+    return _buildLoadingScreen(); // Placeholder while navigating
+  }
+
+  // Helper function for loading screen
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/pomcard_icon_light.png',
+              width: 150,
+              height: 150,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper function for animated route transitions
+  PageRouteBuilder _buildAnimatedRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0); // Slide in from the right
+        const end = Offset.zero;
+        const curve = Curves.easeInOut;
+
+        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        var offsetAnimation = animation.drive(tween);
+
+        return SlideTransition(
+          position: offsetAnimation,
+          child: child,
         );
       },
     );

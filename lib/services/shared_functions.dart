@@ -10,7 +10,9 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:pomfretcardapp/services/refresh_access_token.dart';
+import 'package:pomfretcardapp/services/showMessage.dart';
 import 'logout.dart';
+import 'dart:async';
 
 
 class SharedFunctions {
@@ -141,7 +143,7 @@ class SharedFunctions {
             'last_name': lastName,
             'public_key': publicKey
           }),
-        );
+        ).timeout(Duration(seconds: 10)); // Add timeout
 
         if (response.statusCode == 200) {
           final encryptedJsonBase64 = json.decode(response.body)['encrypted_json'];
@@ -149,15 +151,17 @@ class SharedFunctions {
 
           if (decryptedJsonMap['first_name'] == firstName && decryptedJsonMap['last_name'] == lastName) {
             if (decryptedJsonMap.containsKey('remaining_balance')) {
-              final String balanceData = '\$${decryptedJsonMap['remaining_balance'].toString()}';
+              final String balanceData = decryptedJsonMap['remaining_balance'].toString();
               updateBalanceData(balanceData);
             } else {
               print('Error: Balance data is missing');
-              updateBalanceData('\$ • • •');
+              updateBalanceData('Error');
+              showMessage(context, 'Error: Balance data is missing', 'error');
             }
           } else {
             print('Error: Name mismatch');
-            updateBalanceData('Name mismatch');
+            updateBalanceData('Error');
+            showMessage(context, 'Error: Name mismatch', 'error');
           }
         } else if (response.statusCode == 401) {
           print('Error: Unauthorized access.');
@@ -168,19 +172,31 @@ class SharedFunctions {
               await loadBalanceData(updateBalanceData, context);
             }, context);
           } else {
-            updateBalanceData('\$ • • •');
+            updateBalanceData('Error');
+            showMessage(context, 'Error: Unauthorized access', 'error');
           }
         } else {
           print('Error: Failed to fetch balance with status code ${response.statusCode}');
-          updateBalanceData('\$ • • •');
+          updateBalanceData('Error');
+          showMessage(context, 'Error: Failed to fetch balance', 'error');
         }
       } else {
         print('Error: User first name, last name, public key, or uid not found in secure storage');
-        updateBalanceData('\$ • • •');
+        updateBalanceData('Error');
+        showMessage(context, 'Error: User data not found in secure storage', 'error');
       }
+    } on SocketException catch (e) {
+      print('Network error: $e');
+      updateBalanceData('Error');
+      showMessage(context, 'Network error. Please try again later.', 'error');
+    } on TimeoutException catch (e) {
+      print('Request timeout: $e');
+      updateBalanceData('Error');
+      showMessage(context, 'Request timeout. Please try again later.', 'error');
     } catch (e) {
       print('Error during balance retrieval: $e');
-      updateBalanceData('\$ • • •');
+      updateBalanceData('Error');
+      showMessage(context, 'Error during balance retrieval', 'error');
     }
   }
 
