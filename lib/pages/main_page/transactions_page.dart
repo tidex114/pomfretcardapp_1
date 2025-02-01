@@ -91,9 +91,6 @@ class _TransactionPageState extends State<TransactionPage>
         'Could not load student ID. Please check your connection.',
         'error',
       );
-    } finally {
-      // We set _isLoadingInitial = false in _loadInitialTransactions()
-      // so that shimmer remains until the first load completes.
     }
   }
 
@@ -114,7 +111,6 @@ class _TransactionPageState extends State<TransactionPage>
       print('[_loadInitialTransactions] Done. Shimmer set to false.');
     });
   }
-
 
   // -------------------------------------------
   // Load Transactions (Core network logic)
@@ -352,7 +348,6 @@ class _TransactionPageState extends State<TransactionPage>
             ),
           ),
           const SizedBox(height: 8.0),
-
           // If we're in the *initial* load, show the shimmer placeholders:
           if (_isLoadingInitial) ...[
             _buildShimmerLoadingScreen(theme),
@@ -387,8 +382,7 @@ class _TransactionPageState extends State<TransactionPage>
                     1: 'Allowance',
                   };
                   final locationName =
-                      locationNames[transaction['location']] ??
-                          'Unknown Location';
+                      locationNames[transaction['location']] ?? 'Unknown Location';
                   final qdate = transaction['qdate'] ?? '';
                   final timeStr = transaction['time'] ?? '';
                   final fullDateStr = '$qdate $timeStr';
@@ -404,6 +398,7 @@ class _TransactionPageState extends State<TransactionPage>
                   final formattedDate =
                   DateFormat('MMM dd, HH:mm:ss').format(parsedDate);
 
+                  // ... inside your ListView.builder itemBuilder ...
                   return Container(
                     margin: const EdgeInsets.symmetric(vertical: 5.0),
                     decoration: BoxDecoration(
@@ -427,6 +422,7 @@ class _TransactionPageState extends State<TransactionPage>
                       initiallyExpanded: _tileExpandedStates.length > index
                           ? _tileExpandedStates[index]
                           : false,
+                      // Only display the location name as the title.
                       title: Text(
                         locationName,
                         style: TextStyle(
@@ -443,13 +439,24 @@ class _TransactionPageState extends State<TransactionPage>
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
-                      trailing: Text(
-                        _getTransactionTotal(transaction['prices']),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontFamily: 'Aeonik',
-                          color: theme.colorScheme.onSurface,
-                        ),
+                      // The trailing widget now combines the transaction total and the arrow.
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            _getTransactionTotal(transaction['prices']),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: 'Aeonik',
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _AnimatedArrowIcon(
+                            isExpanded: _tileExpandedStates[index],
+                          ),
+                        ],
                       ),
                       children: <Widget>[
                         ListTile(
@@ -473,6 +480,7 @@ class _TransactionPageState extends State<TransactionPage>
                       ],
                     ),
                   );
+
                 },
               ),
             ],
@@ -505,8 +513,12 @@ class _TransactionPageState extends State<TransactionPage>
     );
   }
 
-  /// 9 Shimmer Skeleton Tiles with more obvious colors
+  /// 9 Shimmer Skeleton Tiles with theme-aware colors
   Widget _buildShimmerLoadingScreen(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: ListView.builder(
@@ -516,25 +528,16 @@ class _TransactionPageState extends State<TransactionPage>
         itemBuilder: (context, index) {
           return Container(
             margin: const EdgeInsets.symmetric(vertical: 5.0),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(8.0),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 4.0,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
             child: Shimmer.fromColors(
-              /// Use the requested colors here
-              baseColor: const Color(0xFFFFFFFF),   // pure white
-              highlightColor: const Color(0xFF444444), // a lighter gray than #272727
-
-              period: const Duration(milliseconds: 1500), // speed of the shimmer
+              baseColor: baseColor,
+              highlightColor: highlightColor,
+              period: const Duration(milliseconds: 1500),
               child: Container(
-                height: 70, // same height as a typical transaction tile
+                height: 70,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.0),
+                  color: baseColor,
+                ),
               ),
             ),
           );
@@ -542,9 +545,6 @@ class _TransactionPageState extends State<TransactionPage>
       ),
     );
   }
-
-
-
 
   // -------------------------------------------
   // Utility: Parse items / quantities / prices
@@ -604,5 +604,58 @@ class _TransactionPageState extends State<TransactionPage>
     } catch (e) {
       return '\$0.00';
     }
+  }
+}
+
+///
+/// Arrow icon widget with a quick 180° rotation animation when expanded.
+///
+class _AnimatedArrowIcon extends StatefulWidget {
+  final bool isExpanded;
+
+  const _AnimatedArrowIcon({Key? key, required this.isExpanded})
+      : super(key: key);
+
+  @override
+  __AnimatedArrowIconState createState() => __AnimatedArrowIconState();
+}
+
+class __AnimatedArrowIconState extends State<_AnimatedArrowIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _iconTurns;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _iconTurns = Tween<double>(begin: 0.0, end: 0.5).animate(_controller);
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedArrowIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isExpanded) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _iconTurns,
+      child: const Icon(Icons.keyboard_arrow_down),
+    );
   }
 }
